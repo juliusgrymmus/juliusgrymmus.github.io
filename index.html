@@ -1,11 +1,111 @@
 <!DOCTYPE html>
 <html lang="sv">
 <head>
-  <meta charset="UTF-8">
-  <title>Min hemsida</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>RealForm Studio</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: Arial, sans-serif;
+      background: linear-gradient(135deg, #0f172a, #1e293b);
+      color: white;
+      overflow-x: hidden;
+    }
+    header {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      text-align: center;
+      padding: 2rem;
+      position: relative;
+    }
+    h1 {
+      font-size: 4rem;
+      margin-bottom: 1rem;
+      animation: fadeIn 1.5s ease;
+    }
+    p {
+      font-size: 1.2rem;
+      max-width: 700px;
+      opacity: 0.9;
+    }
+    .blob {
+      width: 280px;
+      height: 320px;
+      background: linear-gradient(145deg, #f9a8d4, #fb7185);
+      border-radius: 45% 45% 40% 40%;
+      margin: 3rem 0;
+      animation: float 4s ease-in-out infinite;
+      box-shadow: 0 20px 50px rgba(0,0,0,0.35);
+    }
+    .shop {
+      padding: 4rem 2rem;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 2rem;
+      max-width: 1200px;
+      margin: auto;
+    }
+    .card {
+      background: rgba(255,255,255,0.08);
+      backdrop-filter: blur(10px);
+      border-radius: 20px;
+      padding: 2rem;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.25);
+      transition: transform 0.3s ease;
+    }
+    .card:hover { transform: translateY(-8px); }
+    .price { font-size: 1.8rem; margin: 1rem 0; color: #fda4af; }
+    button {
+      background: #ec4899;
+      color: white;
+      border: none;
+      padding: 1rem 1.5rem;
+      border-radius: 999px;
+      cursor: pointer;
+      font-weight: bold;
+    }
+    button:hover { background: #db2777; }
+    @keyframes float {
+      0%,100% { transform: translateY(0px) rotate(0deg); }
+      50% { transform: translateY(-20px) rotate(3deg); }
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+  </style>
 </head>
 <body>
-  <h1>Hej världen!</h1>
-  <p>Det här är min första hemsida.</p>
+  <header>
+    <h1>RealForm Studio</h1>
+    <p>Premium realistiska plastformade modeller med hög detaljnivå och exklusiv design.</p>
+    <div class="blob"></div>
+    <button onclick="document.getElementById('shop').scrollIntoView({behavior:'smooth'})">Shoppa nu</button>
+  </header>
+
+  <section id="shop" class="shop">
+    <div class="card">
+      <h2>Classic Edition</h2>
+      <p>Elegant design med realistisk finish.</p>
+      <div class="price">799 kr</div>
+      <button>Köp</button>
+    </div>
+    <div class="card">
+      <h2>Premium Edition</h2>
+      <p>Extra detaljerad modell med exklusivt material.</p>
+      <div class="price">1299 kr</div>
+      <button>Köp</button>
+    </div>
+    <div class="card">
+      <h2>Collector Edition</h2>
+      <p>Begränsad upplaga för samlare.</p>
+      <div class="price">1999 kr</div>
+      <button>Köp</button>
+    </div>
+  </section>
 </body>
 </html>
