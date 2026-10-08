@@ -74,7 +74,7 @@ canvas{display:block}
 .shop-card .card-desc{color:#999;font-size:12px;line-height:1.4}
 .shop-card .card-stats{color:#ccc;font-size:12px}
 .shop-card .card-stats span{color:#ffd740}
-.card-btn{padding:10px;border:none;border-radius:10px;font-weight:700;font-size:14px;cursor:pointer;transition:.2s;text-align:center;margin-top:auto;pointer-events:auto;position:relative;z-index:2;-webkit-tap-highlight-color:transparent;touch-action:manipulation}
+.card-btn{padding:10px;border:none;border-radius:10px;font-weight:700;font-size:14px;cursor:pointer;transition:.2s;text-align:center;margin-top:auto;pointer-events:auto;position:relative;z-index:21;-webkit-tap-highlight-color:transparent;touch-action:manipulation;user-select:none}
 .card-btn.buy{background:linear-gradient(135deg,#ffd740,#ffab00);color:#000}
 .card-btn.buy:hover{transform:scale(1.04);filter:brightness(1.1)}
 .card-btn.buy:active{transform:scale(.97)}
@@ -175,9 +175,6 @@ canvas{display:block}
 import * as THREE from "three";
 import { PointerLockControls } from "three/addons/controls/PointerLockControls.js";
 
-/* ============================================================
-   CONFIG
-   ============================================================ */
 const CFG = {
   arenaSize: 160,
   moveSpeed: 9,
@@ -189,9 +186,6 @@ const CFG = {
   moveMs: 70
 };
 
-/* ============================================================
-   WEAPONS & UPGRADES
-   ============================================================ */
 const WEAPONS = [
   {id:0,name:"Bajspistolen",  icon:"🔫",dmg:18,rate:.32,mag:12,reload:1.4,speed:90, spread:0,   count:1,aoe:0,cost:0,   color:0x8B4513,projSize:.12,desc:"Pålitlig startpistol"},
   {id:1,name:"Bajshagelgevär",icon:"💥",dmg:10,rate:.75,mag:6, reload:2,  speed:70, spread:.12, count:6,aoe:0,cost:500, color:0x6D3A1A,projSize:.1, desc:"Sprider bajs i alla riktningar"},
@@ -206,9 +200,6 @@ const UPGRADES = [
   {id:"ammo",name:"Större magasin",icon:"📦",desc:"+30% magasin",     maxLvl:5,baseCost:200,costMul:1.4}
 ];
 
-/* ============================================================
-   STATE
-   ============================================================ */
 const ST = {
   phase:'lobby', wave:1, money:0,
   hp:100, maxHp:100,
@@ -219,7 +210,8 @@ const ST = {
   enemies:[], projectiles:[], bossProjectiles:[],
   boss:null, nextEnemyId:0, healAccum:0,
   lobbyReady:false, shopReady:false, isHost:false,
-  kills:0, waveSpawned:false
+  kills:0, waveSpawned:false,
+  waveTransitioning:false          // FIX 3: guard flag
 };
 
 const wpn     = () => WEAPONS[ST.curWeapon];
@@ -229,9 +221,7 @@ const spdMul  = () => 1 + ST.upgrades.spd * 0.10;
 const magMul  = () => 1 + ST.upgrades.ammo * 0.30;
 const maxAmmo = () => Math.floor(wpn().mag * magMul());
 
-/* ============================================================
-   THREE.JS SETUP – optimised
-   ============================================================ */
+/* ============ THREE.JS SETUP ============ */
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x0e0e1a);
 scene.fog = new THREE.FogExp2(0x0e0e1a, .006);
@@ -257,17 +247,12 @@ scene.add(moon);
 scene.add(new THREE.PointLight(0xff6600,.6,60).translateX(20).translateY(8).translateZ(20));
 scene.add(new THREE.PointLight(0x0066ff,.5,60).translateX(-25).translateY(8).translateZ(-15));
 
-/* ============================================================
-   REUSABLE GEOMETRY / MATERIAL CACHES
-   ============================================================ */
 const _boxGeo = new THREE.BoxGeometry(1,1,1);
 const _cylGeo = new THREE.CylinderGeometry(1,1,1,8);
 const _sphGeo = new THREE.SphereGeometry(1,8,8);
 const _projGeo = new THREE.SphereGeometry(1,6,6);
 
-/* ============================================================
-   CITY
-   ============================================================ */
+/* ============ CITY ============ */
 const buildings = [];
 
 function makeBldgTex(r,g,b){
@@ -333,7 +318,6 @@ function addCar(cx,cz,rot,color){
 
 const A=CFG.arenaSize;
 
-// Perimeter buildings
 for(let i=-3;i<=3;i++){
   let h=14+Math.random()*22,w=14+Math.random()*10,d=12+Math.random()*8;
   addBuilding(i*24,-A/2-d/2-2,w,d,h);
@@ -343,7 +327,6 @@ for(let i=-3;i<=3;i++){
   addBuilding(A/2+w/2+2,i*24,w,d,h);
 }
 
-// Inner buildings
 addBuilding(-30,40,10,8,8); addBuilding(-16,42,8,6,6); addBuilding(-30,55,12,7,10);
 addBuilding(25,-40,8,10,7); addBuilding(38,-35,6,8,5); addBuilding(20,-55,10,6,9);
 addBuilding(50,10,7,12,8); addBuilding(52,28,9,6,6); addBuilding(55,-8,6,10,11);
@@ -371,7 +354,6 @@ addCar(-25,25,2.5,0x228833); addCar(40,30,0.2,0x999933);
 addCar(-40,-35,1.7,0x663399); addCar(10,-45,0.9,0x336699);
 addCar(-20,50,3.0,0x993333); addCar(55,55,0.6,0x666666);
 
-// Central fountain
 (function(){
   const base=new THREE.Mesh(new THREE.CylinderGeometry(3,3.5,.8,12),new THREE.MeshStandardMaterial({color:0x556677,roughness:.5}));
   base.position.set(0,.4,0); base.receiveShadow=true; scene.add(base);
@@ -384,7 +366,6 @@ addCar(-20,50,3.0,0x993333); addCar(55,55,0.6,0x666666);
   buildings.push({x:-3.5,z:-3.5,w:7,d:7});
 })();
 
-// Ground
 const gC=document.createElement("canvas"); gC.width=256; gC.height=256;
 const gx=gC.getContext("2d");
 gx.fillStyle="#222222"; gx.fillRect(0,0,256,256);
@@ -400,7 +381,6 @@ gTex.wrapS=gTex.wrapT=THREE.RepeatWrapping; gTex.repeat.set(80,80);
 const ground=new THREE.Mesh(new THREE.PlaneGeometry(500,500),new THREE.MeshStandardMaterial({map:gTex,roughness:1}));
 ground.rotation.x=-Math.PI/2; ground.receiveShadow=true; scene.add(ground);
 
-// Street lights
 for(let i=0;i<16;i++){
   const ang=i/16*Math.PI*2,r=40+Math.random()*25;
   const lx=Math.cos(ang)*r,lz=Math.sin(ang)*r;
@@ -413,7 +393,6 @@ for(let i=0;i<16;i++){
   bulb.position.copy(sl.position); scene.add(bulb);
 }
 
-// Debris (fewer)
 for(let i=0;i<30;i++){
   const s=.2+Math.random()*.6;
   const db=new THREE.Mesh(new THREE.BoxGeometry(s,s*.5,s*.7),new THREE.MeshStandardMaterial({color:0x444444+Math.floor(Math.random()*0x222222),roughness:1}));
@@ -424,7 +403,6 @@ for(let i=0;i<30;i++){
   }
 }
 
-// Stars (fewer)
 for(let i=0;i<100;i++){
   const star=new THREE.Mesh(new THREE.SphereGeometry(.2,3,3),new THREE.MeshBasicMaterial({color:0xffffff}));
   const a1=Math.random()*Math.PI*2,a2=Math.random()*Math.PI-.3,r=180+Math.random()*60;
@@ -434,9 +412,7 @@ for(let i=0;i<100;i++){
 const moonSphere=new THREE.Mesh(new THREE.SphereGeometry(8,12,12),new THREE.MeshBasicMaterial({color:0xddeeff}));
 moonSphere.position.set(100,120,60); scene.add(moonSphere);
 
-/* ============================================================
-   COLLISION – robust, multi-pass, per-axis
-   ============================================================ */
+/* ============ COLLISION ============ */
 function collidesBuilding(px,pz,rad=CFG.playerRad){
   for(let i=0;i<buildings.length;i++){
     const b=buildings[i];
@@ -449,7 +425,6 @@ function collidesBuilding(px,pz,rad=CFG.playerRad){
 }
 
 function pushOutAxis(px,pz,rad){
-  // Multi-pass push-out for robust collision
   for(let pass=0;pass<4;pass++){
     let pushed=false;
     for(let i=0;i<buildings.length;i++){
@@ -461,7 +436,6 @@ function pushOutAxis(px,pz,rad){
       if(dist2<rad*rad){
         pushed=true;
         if(dist2<0.0001){
-          // Dead center – push to nearest edge
           const toLeft=px-b.x, toRight=(b.x+b.w)-px;
           const toTop=pz-b.z, toBottom=(b.z+b.d)-pz;
           const minDist=Math.min(toLeft,toRight,toTop,toBottom);
@@ -482,9 +456,7 @@ function pushOutAxis(px,pz,rad){
   return {x:px,z:pz};
 }
 
-/* ============================================================
-   GUN VIEW MODEL
-   ============================================================ */
+/* ============ GUN VIEW MODEL ============ */
 const gunGroup=new THREE.Group();
 camera.add(gunGroup);
 let gunRecoil=0;
@@ -510,9 +482,7 @@ function buildGunModel(){
 }
 buildGunModel();
 
-/* ============================================================
-   SKIBIDI TOILET MESH
-   ============================================================ */
+/* ============ SKIBIDI TOILET ============ */
 function buildToiletMesh(type){
   const g=new THREE.Group();
   const isB=type==="boss",isF=type==="fast",isT=type==="tank";
@@ -575,7 +545,6 @@ function spawnEnemyLocal(id,type,wave,x,z){
     id,group:m.group,type,
     x,z,y:0,
     hp:baseHp,maxHp:baseHp,
-    // LARGER hitbox radii for easier hitting
     speed:isB?(1.8+wave*.08):isT?(1.5+wave*.05):isF?(5+wave*.15):(3+wave*.1),
     dmg:isB?30:isT?20:isF?8:12,
     radius:isB?2.8:isT?1.6:isF?.9:1.1,
@@ -594,9 +563,7 @@ function spawnEnemyLocal(id,type,wave,x,z){
   return e;
 }
 
-/* ============================================================
-   PROJECTILES
-   ============================================================ */
+/* ============ PROJECTILES ============ */
 const _projMat=new THREE.MeshStandardMaterial({color:0x6B3410,roughness:.6});
 const _bossProjMat=new THREE.MeshStandardMaterial({color:0x00cc00,emissive:0x003300});
 
@@ -614,9 +581,7 @@ function spawnBossProj(ox,oy,oz,dx,dy,dz){
   ST.bossProjectiles.push({mesh,dx,dy,dz,speed:18,life:4});
 }
 
-/* ============================================================
-   SHOOTING
-   ============================================================ */
+/* ============ SHOOTING ============ */
 function shoot(){
   if(!ST.alive||ST.reloading||ST.shootTimer>0||ST.ammo<=0||ST.phase!=='playing') return;
   const w=wpn();
@@ -639,15 +604,17 @@ function startReload(){
   document.getElementById("reload-indicator").style.display="block";
 }
 
-/* ============================================================
-   HOST: ENEMY AI
-   ============================================================ */
+/* ============ HOST AI ============ */
+/* FIX 2: dead players are tracked with a Set so they can never be re-targeted */
+const confirmedDeadPlayers = new Set();
+
 function hostAI(dt){
   const players=[];
   if(ST.alive) players.push({id:playerId,x:camera.position.x,z:camera.position.z});
   for(const id in otherPlayers){
     const op=otherPlayers[id];
-    if(op.userData.alive) players.push({id,x:op.position.x,z:op.position.z});
+    // FIX 2: also check confirmedDeadPlayers
+    if(op.userData.alive && !confirmedDeadPlayers.has(id)) players.push({id,x:op.position.x,z:op.position.z});
   }
   if(players.length===0) return;
 
@@ -663,7 +630,6 @@ function hostAI(dt){
       if(d<nearDist){nearDist=d;nearX=p.x;nearZ=p.z;nearId=p.id;}
     }
 
-    // Separation
     let sepX=0,sepZ=0;
     for(let oi=0;oi<ST.enemies.length;oi++){
       const other=ST.enemies[oi];
@@ -710,9 +676,7 @@ function hostAI(dt){
   }
 }
 
-/* ============================================================
-   ENEMY VISUALS
-   ============================================================ */
+/* ============ ENEMY VISUALS ============ */
 function updateEnemyVisuals(dt){
   let alive=0;
   const lerpFactor=1-Math.pow(.0005,dt);
@@ -750,14 +714,13 @@ function updateEnemyVisuals(dt){
     if(ST.boss?.dead) ST.boss=null;
   }
 
-  if(ST.isHost&&ST.phase==='playing'&&ST.waveSpawned&&alive===0){
+  /* FIX 3: use waveTransitioning guard to prevent multiple waveComplete calls */
+  if(ST.isHost&&ST.phase==='playing'&&ST.waveSpawned&&!ST.waveTransitioning&&alive===0){
     waveComplete();
   }
 }
 
-/* ============================================================
-   PROJECTILE UPDATE – cylindrical enemy hitbox
-   ============================================================ */
+/* ============ PROJECTILE UPDATE ============ */
 function updateProjectiles(dt){
   for(let i=ST.projectiles.length-1;i>=0;i--){
     const p=ST.projectiles[i];
@@ -774,14 +737,12 @@ function updateProjectiles(dt){
         const e=ST.enemies[ei];
         if(e.dead) continue;
 
-        // CYLINDRICAL hitbox: XZ distance + generous Y range
         const dx=p.mesh.position.x-e.x;
         const dz=p.mesh.position.z-e.z;
         const distXZ=Math.sqrt(dx*dx+dz*dz);
         const py=p.mesh.position.y;
         const hitRad=e.radius+p.sz+0.2;
 
-        // Y check: from ground to hitHeight above ground
         if(distXZ<hitRad && py>-0.5 && py<e.hitHeight+0.5){
           hit=true;
           if(p.aoe>0) aoeHit(p.mesh.position,p.aoe,p.dmg);
@@ -847,11 +808,10 @@ function spawnExplosion(pos){
   setTimeout(()=>scene.remove(g),400);
 }
 
-// Throttled floating numbers
 let _lastFloatNum=0;
 function showFloatingNum(wx,wy,wz,val,heal=false){
   const now=performance.now();
-  if(now-_lastFloatNum<50) return; // throttle
+  if(now-_lastFloatNum<50) return;
   _lastFloatNum=now;
   const v=new THREE.Vector3(wx,wy,wz).project(camera);
   if(v.z>1) return;
@@ -864,9 +824,7 @@ function showFloatingNum(wx,wy,wz,val,heal=false){
   setTimeout(()=>el.remove(),700);
 }
 
-/* ============================================================
-   PLAYER HP / HEALING
-   ============================================================ */
+/* ============ PLAYER HP / HEALING ============ */
 function takeDamage(d){
   if(!ST.alive) return;
   ST.hp=Math.max(0,ST.hp-d);
@@ -920,11 +878,13 @@ function showDeathBtn(){
 
 window.returnToLobby=function(){
   cleanupGame();
+  confirmedDeadPlayers.clear();          // FIX 2: clear dead tracking
   ST.wave=1;ST.hp=ST.maxHp;ST.alive=true;ST.kills=0;
   ST.money=0;ST.phase='lobby';ST.lobbyReady=false;ST.shopReady=false;
   ST.curWeapon=0;ST.ownedWeapons=[true,false,false,false];
   ST.upgrades={dmg:0,hp:0,spd:0,rate:0,ammo:0};ST.maxHp=100;ST.hp=100;
   ST.ammo=maxAmmo();ST.reloading=false;ST.waveSpawned=false;
+  ST.waveTransitioning=false;            // FIX 3
   buildGunModel();updateWeaponBar();updateAmmoUI();updateHealthUI();updateMoneyUI();
   camera.position.set(0,1.7,0);
   document.getElementById("death").style.display="none";
@@ -941,14 +901,13 @@ function cleanupGame(){
   ST.enemies=[];
   ST.projectiles.forEach(p=>scene.remove(p.mesh));ST.projectiles=[];
   ST.bossProjectiles.forEach(p=>scene.remove(p.mesh));ST.bossProjectiles=[];
-  ST.boss=null;ST.waveSpawned=false;
+  ST.boss=null;ST.waveSpawned=false;ST.waveTransitioning=false;
 }
 
-/* ============================================================
-   WAVE SYSTEM
-   ============================================================ */
+/* ============ WAVE SYSTEM ============ */
 function startWave(){
   ST.phase='playing';ST.shopReady=false;ST.waveSpawned=false;
+  ST.waveTransitioning=false;            // FIX 3: clear guard
   document.getElementById("shop").style.display="none";
   document.getElementById("lobby").style.display="none";
   document.getElementById("hud").style.display="block";
@@ -991,6 +950,8 @@ function makeSpawnData(wave){
 
 function waveComplete(){
   if(ST.phase!=='playing') return;
+  if(ST.waveTransitioning) return;       // FIX 3: prevent double call
+  ST.waveTransitioning=true;             // FIX 3: lock
   ST.phase='shop';ST.waveSpawned=false;
   ST.money+=50*ST.wave;updateMoneyUI();
   showAnnounce(`VÅG ${ST.wave} KLAR!`,"Dags att handla!",2000);
@@ -1013,10 +974,13 @@ function showAnnounce(text,sub,dur){
 }
 
 /* ============================================================
-   SHOP – FIXED: purchases now work correctly
+   SHOP – COMPLETELY REWRITTEN WITH GLOBAL FUNCTIONS
+   FIX 1: Uses window-level onclick handlers instead of
+   addEventListener closures. This guarantees clicks work.
    ============================================================ */
 function openShop(){
   ST.phase='shop';ST.shopReady=false;
+  ST.waveTransitioning=false;            // FIX 3: clear for next cycle
   controls.unlock();
   document.getElementById("shop").style.display="flex";
   document.getElementById("hud").style.display="none";
@@ -1036,115 +1000,135 @@ function showBuyFeedback(text,color){
   setTimeout(()=>el.style.opacity="0",1200);
 }
 
+/* FIX 1: Global buy/equip functions accessible from onclick attributes */
+window.shopBuyWeapon = function(weaponId) {
+  const w = WEAPONS[weaponId];
+  if (!w) return;
+  const cost = w.cost;
+
+  if (ST.ownedWeapons[weaponId]) {
+    // Already owned → equip it
+    switchWeapon(weaponId);
+    showBuyFeedback(`✅ ${w.name} utrustad!`, "#42a5f5");
+    buildShop();
+    return;
+  }
+
+  // Buying
+  if (ST.money >= cost) {
+    ST.money -= cost;
+    ST.ownedWeapons[weaponId] = true;
+    switchWeapon(weaponId);
+    updateMoneyUI();
+    showBuyFeedback(`✅ Köpte ${w.name}!`, "#4caf50");
+    buildShop();
+  } else {
+    showBuyFeedback(`❌ Inte råd! Behöver $${cost - Math.floor(ST.money)} till`, "#f44336");
+  }
+};
+
+window.shopBuyUpgrade = function(upgradeId) {
+  const u = UPGRADES.find(up => up.id === upgradeId);
+  if (!u) return;
+  const lvl = ST.upgrades[u.id] || 0;
+  if (lvl >= u.maxLvl) return;
+
+  const cost = Math.floor(u.baseCost * Math.pow(u.costMul, lvl));
+
+  if (ST.money >= cost) {
+    ST.money -= cost;
+    ST.upgrades[u.id] = lvl + 1;
+
+    if (u.id === "hp") {
+      ST.maxHp = 100 + ST.upgrades.hp * 25;
+      ST.hp = ST.maxHp;
+      updateHealthUI();
+    }
+
+    updateMoneyUI();
+    showBuyFeedback(`⬆️ ${u.name} → Nivå ${lvl + 1}!`, "#42a5f5");
+    buildShop();
+  } else {
+    showBuyFeedback(`❌ Inte råd! Behöver $${cost - Math.floor(ST.money)} till`, "#f44336");
+  }
+};
+
 function buildShop(){
-  const money=Math.floor(ST.money);
-  document.getElementById("shop-money").textContent="💰 "+money;
+  const money = Math.floor(ST.money);
+  document.getElementById("shop-money").textContent = "💰 " + money;
 
   // === WEAPONS ===
-  const wg=document.getElementById("shop-weapons");
-  wg.innerHTML="";
+  const wg = document.getElementById("shop-weapons");
+  wg.innerHTML = "";
 
-  WEAPONS.forEach(w=>{
-    const owned=!!ST.ownedWeapons[w.id];
-    const equipped=ST.curWeapon===w.id;
-    const cost=w.cost;
-    const canAfford=money>=cost;
+  for (let wi = 0; wi < WEAPONS.length; wi++) {
+    const w = WEAPONS[wi];
+    const owned = !!ST.ownedWeapons[w.id];
+    const equipped = ST.curWeapon === w.id;
+    const cost = w.cost;
+    const canAfford = money >= cost;
 
-    const card=document.createElement("div");
-    card.className="shop-card";
-    card.innerHTML=`
+    let btnHtml, btnClass;
+
+    if (owned && equipped) {
+      btnClass = "card-btn equipped";
+      btnHtml = "✅ UTRUSTAD";
+    } else if (owned) {
+      btnClass = "card-btn buy";
+      btnHtml = "🔄 UTRUSTA";
+    } else if (canAfford) {
+      btnClass = "card-btn buy";
+      btnHtml = `💰 KÖP $${cost}`;
+    } else {
+      btnClass = "card-btn cant";
+      btnHtml = `🔒 $${cost} (behöver $${cost - money} till)`;
+    }
+
+    const canClick = (owned && !equipped) || (!owned && canAfford);
+
+    wg.innerHTML += `<div class="shop-card">
       <div class="card-icon">${w.icon}</div>
       <div class="card-name">${w.name}</div>
       <div class="card-desc">${w.desc}</div>
-      <div class="card-stats">Skada: <span>${w.dmg}${w.count>1?" x"+w.count:""}</span> | Magasin: <span>${w.mag}</span> | Takt: <span>${(1/w.rate).toFixed(1)}/s</span>${w.aoe?` | AOE: <span>${w.aoe}m</span>`:""}</div>`;
-
-    const btn=document.createElement("button");
-
-    if(owned&&equipped){
-      btn.className="card-btn equipped";
-      btn.textContent="✅ UTRUSTAD";
-    } else if(owned){
-      btn.className="card-btn buy";
-      btn.textContent="UTRUSTA";
-      btn.addEventListener("click",function(ev){
-        ev.preventDefault();ev.stopPropagation();
-        switchWeapon(w.id);
-        buildShop();
-      });
-    } else if(canAfford){
-      btn.className="card-btn buy";
-      btn.textContent=`KÖP $${cost}`;
-      btn.addEventListener("click",function(ev){
-        ev.preventDefault();ev.stopPropagation();
-        if(ST.money>=cost&&!ST.ownedWeapons[w.id]){
-          ST.money-=cost;
-          ST.ownedWeapons[w.id]=true;
-          switchWeapon(w.id);
-          updateMoneyUI();
-          showBuyFeedback(`✅ Köpte ${w.name}!`,"#4caf50");
-          buildShop();
-        }
-      });
-    } else {
-      btn.className="card-btn cant";
-      btn.textContent=`$${cost} (behöver $${cost-money} till)`;
-    }
-
-    card.appendChild(btn);
-    wg.appendChild(card);
-  });
+      <div class="card-stats">Skada: <span>${w.dmg}${w.count > 1 ? " x" + w.count : ""}</span> | Magasin: <span>${w.mag}</span> | Takt: <span>${(1 / w.rate).toFixed(1)}/s</span>${w.aoe ? ` | AOE: <span>${w.aoe}m</span>` : ""}</div>
+      <button class="${btnClass}" ${canClick ? `onclick="shopBuyWeapon(${w.id})"` : ""}>${btnHtml}</button>
+    </div>`;
+  }
 
   // === UPGRADES ===
-  const ug=document.getElementById("shop-upgrades");
-  ug.innerHTML="";
+  const ug = document.getElementById("shop-upgrades");
+  ug.innerHTML = "";
 
-  UPGRADES.forEach(u=>{
-    const lvl=ST.upgrades[u.id]||0;
-    const maxed=lvl>=u.maxLvl;
-    const cost=Math.floor(u.baseCost*Math.pow(u.costMul,lvl));
-    const canAfford=money>=cost;
+  for (let ui = 0; ui < UPGRADES.length; ui++) {
+    const u = UPGRADES[ui];
+    const lvl = ST.upgrades[u.id] || 0;
+    const maxed = lvl >= u.maxLvl;
+    const cost = Math.floor(u.baseCost * Math.pow(u.costMul, lvl));
+    const canAfford = money >= cost;
 
-    const card=document.createElement("div");
-    card.className="shop-card";
-    card.innerHTML=`
+    let btnHtml, btnClass;
+
+    if (maxed) {
+      btnClass = "card-btn maxed";
+      btnHtml = "👑 MAX NIVÅ";
+    } else if (canAfford) {
+      btnClass = "card-btn upgrade";
+      btnHtml = `⬆️ UPPGRADERA $${cost}`;
+    } else {
+      btnClass = "card-btn cant";
+      btnHtml = `🔒 $${cost} (behöver $${cost - money} till)`;
+    }
+
+    const canClick = !maxed && canAfford;
+
+    ug.innerHTML += `<div class="shop-card">
       <div class="card-icon">${u.icon}</div>
       <div class="card-name">${u.name}</div>
       <div class="card-desc">${u.desc}</div>
-      <div class="card-stats">Nivå: <span>${lvl}/${u.maxLvl}</span> | ${"█".repeat(lvl)}${"░".repeat(u.maxLvl-lvl)}</div>`;
-
-    const btn=document.createElement("button");
-
-    if(maxed){
-      btn.className="card-btn maxed";
-      btn.textContent="MAX NIVÅ";
-    } else if(canAfford){
-      btn.className="card-btn upgrade";
-      btn.textContent=`UPPGRADERA $${cost}`;
-      btn.addEventListener("click",function(ev){
-        ev.preventDefault();ev.stopPropagation();
-        const currentLvl=ST.upgrades[u.id]||0;
-        const currentCost=Math.floor(u.baseCost*Math.pow(u.costMul,currentLvl));
-        if(ST.money>=currentCost&&currentLvl<u.maxLvl){
-          ST.money-=currentCost;
-          ST.upgrades[u.id]=currentLvl+1;
-          if(u.id==="hp"){
-            ST.maxHp=100+ST.upgrades.hp*25;
-            ST.hp=ST.maxHp;
-            updateHealthUI();
-          }
-          updateMoneyUI();
-          showBuyFeedback(`⬆️ ${u.name} → Nivå ${currentLvl+1}!`,"#42a5f5");
-          buildShop();
-        }
-      });
-    } else {
-      btn.className="card-btn cant";
-      btn.textContent=`$${cost} (behöver $${cost-money} till)`;
-    }
-
-    card.appendChild(btn);
-    ug.appendChild(card);
-  });
+      <div class="card-stats">Nivå: <span>${lvl}/${u.maxLvl}</span> | ${"█".repeat(lvl)}${"░".repeat(u.maxLvl - lvl)}</div>
+      <button class="${btnClass}" ${canClick ? `onclick="shopBuyUpgrade('${u.id}')"` : ""}>${btnHtml}</button>
+    </div>`;
+  }
 
   updateShopReadyStatus();
 }
@@ -1176,7 +1160,7 @@ document.getElementById("start-wave-btn").addEventListener("click",()=>{
 });
 
 function updateShopReadyStatus(){
-  if(!channel){document.getElementById("shop-ready-status").textContent="Solo-läge";return;}
+  if(!channel){document.getElementById("shop-ready-status").textContent="Solo-läge – klicka redo!";return;}
   const pState=channel.presenceState();
   let ready=0,total=0;
   for(const id in pState){
@@ -1186,23 +1170,42 @@ function updateShopReadyStatus(){
   document.getElementById("shop-ready-status").textContent=`${ready}/${total} spelare redo`;
 }
 
+/* FIX 3: checkShopReady now has proper guards against multiple calls */
+let _shopReadyPending = false;
+
 function checkShopReady(){
+  if (_shopReadyPending) return;         // FIX 3: prevent stacking timeouts
+  _shopReadyPending = true;
+
   setTimeout(()=>{
+    _shopReadyPending = false;           // FIX 3: clear lock
+
     if(!ST.isHost) return;
-    if(!channel){ST.wave++;startWave();return;}
+    if(ST.phase !== 'shop') return;      // FIX 3: must still be in shop phase
+
+    if(!channel){
+      if(ST.shopReady){
+        ST.wave++;
+        startWave();
+      }
+      return;
+    }
+
     const pState=channel.presenceState();
     let allReady=true,count=0;
     for(const id in pState){
       const p=pState[id]?.[0];
       if(p&&p.phase==='shop'){count++;if(!p.shopReady) allReady=false;}
     }
-    if(allReady&&count>0){ST.wave++;bcast("next-wave",{wave:ST.wave});startWave();}
+    if(allReady&&count>0){
+      ST.wave++;
+      bcast("next-wave",{wave:ST.wave});
+      startWave();
+    }
   },400);
 }
 
-/* ============================================================
-   LOBBY
-   ============================================================ */
+/* ============ LOBBY ============ */
 function buildLobbyUI(){
   if(!channel){
     document.getElementById("lobby-status").textContent="Solo-läge 🎮";
@@ -1264,12 +1267,13 @@ function checkLobbyReady(){
 
 function doGameStart(){
   cleanupGame();
+  confirmedDeadPlayers.clear();          // FIX 2
   ST.wave=1;ST.hp=ST.maxHp;ST.alive=true;ST.kills=0;
   ST.money=0;ST.nextEnemyId=0;
   ST.curWeapon=0;ST.ownedWeapons=[true,false,false,false];
   ST.upgrades={dmg:0,hp:0,spd:0,rate:0,ammo:0};ST.maxHp=100;ST.hp=100;
   ST.ammo=maxAmmo();ST.reloading=false;ST.lobbyReady=false;ST.shopReady=false;
-  ST.waveSpawned=false;
+  ST.waveSpawned=false;ST.waveTransitioning=false;
   buildGunModel();updateWeaponBar();updateAmmoUI();updateHealthUI();updateMoneyUI();
   const ang=Math.random()*Math.PI*2;
   camera.position.set(Math.cos(ang)*6,1.7,Math.sin(ang)*6);
@@ -1278,9 +1282,7 @@ function doGameStart(){
   startWave();
 }
 
-/* ============================================================
-   UI UPDATES
-   ============================================================ */
+/* ============ UI UPDATES ============ */
 function updateHealthUI(){
   document.getElementById("health-bar").style.width=(ST.hp/ST.maxHp*100)+"%";
 }
@@ -1306,20 +1308,16 @@ function updateWeaponBar(){
 }
 updateWeaponBar();updateAmmoUI();updateHealthUI();
 
-/* ============================================================
-   CONTROLS – INSTANT JUMP (no delay)
-   ============================================================ */
+/* ============ CONTROLS ============ */
 const controls=new PointerLockControls(camera,document.body);
 const keys={f:false,b:false,l:false,r:false};
 let shootHeld=false,shootKey=false;
 
-// Jump is handled immediately in keydown, not buffered
 document.addEventListener("keydown",e=>{
   if(e.code==="KeyW") keys.f=true;
   if(e.code==="KeyS") keys.b=true;
   if(e.code==="KeyA") keys.l=true;
   if(e.code==="KeyD") keys.r=true;
-  // INSTANT JUMP – apply velocity immediately on keydown
   if(e.code==="Space"&&!e.repeat&&ST.onGround&&ST.alive&&ST.phase==='playing'){
     ST.velocityY=CFG.jumpStr;
     ST.onGround=false;
@@ -1349,9 +1347,7 @@ renderer.domElement.addEventListener("click",()=>{
   if(ST.phase==='playing'&&ST.alive&&!controls.isLocked) controls.lock();
 });
 
-/* ============================================================
-   MULTIPLAYER
-   ============================================================ */
+/* ============ MULTIPLAYER ============ */
 const SUPABASE_URL="https://vdlezuortcobvypkhfnn.supabase.co";
 const SUPABASE_KEY="sb_publishable_KGwlKLA38h3LVlZIWBfnsQ_496oon4z";
 
@@ -1439,11 +1435,19 @@ function initMultiplayer(){
         if(id===playerId) continue;
         const p=pState[id]?.[0];if(!p) continue;
         if(!otherPlayers[id]) createRemotePlayer(id,p.name);
-        otherPlayers[id].userData.alive=p.alive!==false&&p.phase==='playing';
-        otherPlayers[id].visible=otherPlayers[id].userData.alive;
+
+        /* FIX 2: never revive a confirmed-dead player via presence */
+        if(confirmedDeadPlayers.has(id)){
+          otherPlayers[id].userData.alive=false;
+          otherPlayers[id].visible=false;
+        } else {
+          const isAlive=p.alive!==false&&p.phase==='playing';
+          otherPlayers[id].userData.alive=isAlive;
+          otherPlayers[id].visible=isAlive;
+        }
       }
       let aCount=0;
-      for(const id in pState){const p=pState[id]?.[0];if(p&&p.phase==='playing'&&p.alive) aCount++;}
+      for(const id in pState){const p=pState[id]?.[0];if(p&&p.phase==='playing'&&p.alive&&!confirmedDeadPlayers.has(id)) aCount++;}
       document.getElementById("a-count").textContent=Math.max(aCount,ST.alive?1:0);
       if(ST.phase==='lobby') buildLobbyUI();
       if(ST.phase==='shop') updateShopReadyStatus();
@@ -1452,7 +1456,7 @@ function initMultiplayer(){
     channel.on("presence",{event:"leave"},({leftPresences})=>{
       for(const lp of leftPresences){
         for(const id in otherPlayers){
-          if(lp.key===id||lp.playerId===id){scene.remove(otherPlayers[id]);delete otherPlayers[id];}
+          if(lp.key===id||lp.playerId===id){scene.remove(otherPlayers[id]);delete otherPlayers[id];confirmedDeadPlayers.delete(id);}
         }
       }
       determineHost();
@@ -1466,7 +1470,13 @@ function initMultiplayer(){
       if(!otherPlayers[p.id]) createRemotePlayer(p.id,p.name);
       const op=otherPlayers[p.id];
       op.userData.tx=p.x;op.userData.ty=p.y;op.userData.tz=p.z;op.userData.tr=p.r;
-      op.userData.alive=p.alive;op.visible=p.alive!==false;
+
+      /* FIX 2: respect confirmedDeadPlayers */
+      if(confirmedDeadPlayers.has(p.id)){
+        op.userData.alive=false;op.visible=false;
+      } else {
+        op.userData.alive=p.alive;op.visible=p.alive!==false;
+      }
     });
 
     channel.on("broadcast",{event:"shot"},({payload:p})=>{
@@ -1523,8 +1533,13 @@ function initMultiplayer(){
 
     channel.on("broadcast",{event:"shop-ready"},()=>{updateShopReadyStatus();checkShopReady();});
 
+    /* FIX 2: p-died now adds to confirmedDeadPlayers so presence can never override */
     channel.on("broadcast",{event:"p-died"},({payload:p})=>{
-      if(otherPlayers[p.id]){otherPlayers[p.id].visible=false;otherPlayers[p.id].userData.alive=false;}
+      confirmedDeadPlayers.add(p.id);
+      if(otherPlayers[p.id]){
+        otherPlayers[p.id].visible=false;
+        otherPlayers[p.id].userData.alive=false;
+      }
       if(ST.phase==='dead') checkAllDead();
     });
 
@@ -1560,6 +1575,11 @@ function smoothRemotePlayers(dt){
   const s=1-Math.pow(.001,dt);
   for(const id in otherPlayers){
     const p=otherPlayers[id];
+    /* FIX 2: skip smoothing for dead players */
+    if(!p.userData.alive||confirmedDeadPlayers.has(id)){
+      p.visible=false;
+      continue;
+    }
     p.position.x+=(p.userData.tx-p.position.x)*s;
     p.position.y+=(p.userData.ty-p.position.y)*s;
     p.position.z+=(p.userData.tz-p.position.z)*s;
@@ -1572,20 +1592,16 @@ function smoothRemotePlayers(dt){
 
 initMultiplayer();
 
-/* ============================================================
-   GAME LOOP – optimised, fixed jump, fixed collision
-   ============================================================ */
+/* ============ GAME LOOP ============ */
 let prevTime=performance.now();
-const _moveVec=new THREE.Vector3();
 
 function animate(time){
   requestAnimationFrame(animate);
   const rawDt=(time-prevTime)/1000;
-  const dt=Math.min(rawDt,.04); // cap at 40ms
+  const dt=Math.min(rawDt,.04);
   prevTime=time;
 
   if(controls.isLocked&&ST.alive&&ST.phase==='playing'){
-    // Movement with per-axis collision
     let mx=0,mz=0;
     if(keys.f) mz+=1;if(keys.b) mz-=1;
     if(keys.l) mx-=1;if(keys.r) mx+=1;
@@ -1595,35 +1611,26 @@ function animate(time){
       mx/=len;mz/=len;
       const spd=CFG.moveSpeed*spdMul()*dt;
 
-      // Save old position
-      const oldX=camera.position.x, oldZ=camera.position.z;
-
-      // Move X axis
       controls.moveRight(mx*spd);
       let p=pushOutAxis(camera.position.x,camera.position.z,CFG.playerRad);
       camera.position.x=p.x;camera.position.z=p.z;
 
-      // Move Z axis
       controls.moveForward(mz*spd);
       p=pushOutAxis(camera.position.x,camera.position.z,CFG.playerRad);
       camera.position.x=p.x;camera.position.z=p.z;
 
-      // Arena bounds
       const halfA=A/2-1;
       camera.position.x=Math.max(-halfA,Math.min(halfA,camera.position.x));
       camera.position.z=Math.max(-halfA,Math.min(halfA,camera.position.z));
     }
 
-    // Gravity (jump is applied instantly in keydown handler)
     ST.velocityY-=CFG.gravity*dt;
     camera.position.y+=ST.velocityY*dt;
     if(camera.position.y<=1.7){camera.position.y=1.7;ST.velocityY=0;ST.onGround=true;}
 
-    // Shooting
     if(shootHeld||shootKey) shoot();
     ST.shootTimer=Math.max(0,ST.shootTimer-dt);
 
-    // Reload
     if(ST.reloading){
       ST.reloadTimer-=dt;
       if(ST.reloadTimer<=0){
@@ -1636,14 +1643,12 @@ function animate(time){
     healTick(dt);
   }
 
-  // Gun sway (minimal)
   gunRecoil*=.82;
   gunGroup.position.z=-.45+gunRecoil;
   const sw=time*.002;
   gunGroup.position.x=.32+Math.sin(sw)*.004;
   gunGroup.position.y=-.28+Math.cos(sw*1.3)*.002;
 
-  // Game logic
   if(ST.isHost&&ST.phase==='playing') hostAI(dt);
   updateEnemyVisuals(dt);
   updateProjectiles(dt);
@@ -1668,4 +1673,3 @@ window.addEventListener("resize",()=>{
 </script>
 </body>
 </html>
-
