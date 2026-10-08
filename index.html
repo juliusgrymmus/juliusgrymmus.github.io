@@ -1401,19 +1401,33 @@ updateWeaponBar(); updateAmmoUI(); updateHealthUI();
 // ============================================================
 const controls=new PointerLockControls(camera,document.body);
 const keys={f:false,b:false,l:false,r:false};
-let jumpP=false, shootHeld=false;
+let jumpP=false, shootHeld=false, shootKey=false;
 
 document.addEventListener("keydown",e=>{
   if(e.code==="KeyW") keys.f=true;
   if(e.code==="KeyS") keys.b=true;
   if(e.code==="KeyA") keys.l=true;
   if(e.code==="KeyD") keys.r=true;
+
   if(e.code==="Space"&&!e.repeat) jumpP=true;
+
+  if(e.code==="KeyE") shootKey=true;
+
   if(e.code==="KeyR"&&!ST.reloading&&ST.ammo<maxAmmo()) startReload();
+
   if(e.code==="Digit1") switchWeapon(0);
   if(e.code==="Digit2"&&ST.ownedWeapons[1]) switchWeapon(1);
   if(e.code==="Digit3"&&ST.ownedWeapons[2]) switchWeapon(2);
   if(e.code==="Digit4"&&ST.ownedWeapons[3]) switchWeapon(3);
+});
+
+document.addEventListener("keyup",e=>{
+  if(e.code==="KeyW") keys.f=false;
+  if(e.code==="KeyS") keys.b=false;
+  if(e.code==="KeyA") keys.l=false;
+  if(e.code==="KeyD") keys.r=false;
+
+  if(e.code==="KeyE") shootKey=false;
 });
 document.addEventListener("keyup",e=>{
   if(e.code==="KeyW") keys.f=false;
@@ -1752,7 +1766,7 @@ function animate(time){
     camera.position.y+=ST.velocityY*dt;
     if(camera.position.y<=1.7){ camera.position.y=1.7; ST.velocityY=0; ST.onGround=true; }
 
-    if(shootHeld) shoot();
+    if(shootHeld || shootKey) shoot();
     ST.shootTimer=Math.max(0,ST.shootTimer-dt);
     if(ST.reloading){
       ST.reloadTimer-=dt;
