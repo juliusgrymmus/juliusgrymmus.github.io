@@ -1148,84 +1148,181 @@ function openShop(){
   updatePresence();
 }
 
-function buildShop(){
-  document.getElementById("shop-money").textContent="💰 "+ST.money;
+function getShopMoney(){
+  const money = Number(ST.money);
+  return Number.isFinite(money) ? money : 0;
+}
 
-  const wg=document.getElementById("shop-weapons"); wg.innerHTML="";
+function buildShop(){
+  const money = getShopMoney();
+
+  document.getElementById("shop-money").textContent = "💰 " + money;
+
+  // =========================
+  // VAPEN
+  // =========================
+  const wg = document.getElementById("shop-weapons");
+  wg.innerHTML = "";
+
   for(const w of WEAPONS){
-    const owned=ST.ownedWeapons[w.id];
-    const equipped=ST.curWeapon===w.id;
-    const canBuy=ST.money>=w.cost&&!owned;
-    const card=document.createElement("div"); card.className="shop-card";
-    card.innerHTML=`
+    const owned = !!ST.ownedWeapons[w.id];
+    const equipped = ST.curWeapon === w.id;
+    const canBuy = !owned && money >= Number(w.cost);
+
+    const card = document.createElement("div");
+    card.className = "shop-card";
+
+    card.innerHTML = `
       <div class="card-icon">${w.icon}</div>
       <div class="card-name">${w.name}</div>
       <div class="card-desc">${w.desc}</div>
       <div class="card-stats">
-        Skada: <span>${w.dmg}${w.count>1?" x"+w.count:""}</span> |
+        Skada: <span>${w.dmg}${w.count > 1 ? " x" + w.count : ""}</span> |
         Magasin: <span>${w.mag}</span> |
-        Takt: <span>${(1/w.rate).toFixed(1)}/s</span>
-        ${w.aoe?` | AOE: <span>${w.aoe}m</span>`:""}
-      </div>`;
-    const btn=document.createElement("button"); btn.className="card-btn";
-    if(owned&&equipped){
-      btn.className+=" equipped"; btn.textContent="✅ UTRUSTAD";
+        Takt: <span>${(1 / w.rate).toFixed(1)}/s</span>
+        ${w.aoe ? ` | AOE: <span>${w.aoe}m</span>` : ""}
+      </div>
+    `;
+
+    const btn = document.createElement("button");
+
+    if(owned && equipped){
+      btn.className = "card-btn equipped";
+      btn.textContent = "✅ UTRUSTAD";
+      btn.disabled = true;
+
     } else if(owned){
-      btn.className+=" buy"; btn.textContent="UTRUSTA";
-      btn.onclick=()=>{switchWeapon(w.id);buildShop();};
+      btn.className = "card-btn buy";
+      btn.textContent = "UTRUSTA";
+      btn.disabled = false;
+
+      btn.onclick = () => {
+        switchWeapon(w.id);
+        buildShop();
+      };
+
     } else if(canBuy){
-      btn.className+=" buy"; btn.textContent=`KÖP $${w.cost}`;
-      btn.onclick=()=>{buyWeapon(w.id);buildShop();};
+      btn.className = "card-btn buy";
+      btn.textContent = `KÖP $${w.cost}`;
+      btn.disabled = false;
+
+      btn.onclick = () => {
+        buyWeapon(w.id);
+      };
+
     } else {
-      btn.className+=" cant"; btn.textContent=`$${w.cost}`;
+      btn.className = "card-btn cant";
+      btn.textContent = `$${w.cost}`;
+      btn.disabled = true;
     }
-    card.appendChild(btn); wg.appendChild(card);
+
+    card.appendChild(btn);
+    wg.appendChild(card);
   }
 
-  const ug=document.getElementById("shop-upgrades"); ug.innerHTML="";
+  // =========================
+  // UPPGRADERINGAR
+  // =========================
+  const ug = document.getElementById("shop-upgrades");
+  ug.innerHTML = "";
+
   for(const u of UPGRADES){
-    const lvl=ST.upgrades[u.id];
-    const maxed=lvl>=u.maxLvl;
-    const cost=Math.floor(u.baseCost*Math.pow(u.costMul,lvl));
-    const canBuy=ST.money>=cost&&!maxed;
-    const card=document.createElement("div"); card.className="shop-card";
-    card.innerHTML=`
+    const lvl = Number(ST.upgrades[u.id]) || 0;
+    const maxed = lvl >= u.maxLvl;
+    const cost = Math.floor(
+      Number(u.baseCost) * Math.pow(Number(u.costMul), lvl)
+    );
+
+    const canBuy = !maxed && money >= cost;
+
+    const card = document.createElement("div");
+    card.className = "shop-card";
+
+    card.innerHTML = `
       <div class="card-icon">${u.icon}</div>
       <div class="card-name">${u.name}</div>
       <div class="card-desc">${u.desc}</div>
       <div class="card-stats">
         Nivå: <span>${lvl}/${u.maxLvl}</span> |
-        ${"█".repeat(lvl)}${"░".repeat(u.maxLvl-lvl)}
-      </div>`;
-    const btn=document.createElement("button"); btn.className="card-btn";
+        ${"█".repeat(lvl)}${"░".repeat(u.maxLvl - lvl)}
+      </div>
+    `;
+
+    const btn = document.createElement("button");
+
     if(maxed){
-      btn.className+=" maxed"; btn.textContent="MAX";
+      btn.className = "card-btn maxed";
+      btn.textContent = "MAX";
+      btn.disabled = true;
+
     } else if(canBuy){
-      btn.className+=" upgrade"; btn.textContent=`UPPGRADERA $${cost}`;
-      btn.onclick=()=>{buyUpgrade(u.id,cost);buildShop();};
+      btn.className = "card-btn upgrade";
+      btn.textContent = `UPPGRADERA $${cost}`;
+      btn.disabled = false;
+
+      btn.onclick = () => {
+        buyUpgrade(u.id, cost);
+      };
+
     } else {
-      btn.className+=" cant"; btn.textContent=`$${cost}`;
+      btn.className = "card-btn cant";
+      btn.textContent = `$${cost}`;
+      btn.disabled = true;
     }
-    card.appendChild(btn); ug.appendChild(card);
+
+    card.appendChild(btn);
+    ug.appendChild(card);
   }
 
   updateShopReadyStatus();
 }
 
+
 function buyWeapon(id){
-  if(ST.money<WEAPONS[id].cost||ST.ownedWeapons[id]) return;
-  ST.money-=WEAPONS[id].cost;
-  ST.ownedWeapons[id]=true;
+  const w = WEAPONS[id];
+  if(!w) return;
+
+  const money = getShopMoney();
+  const cost = Number(w.cost);
+
+  // Säker köpcheck
+  if(ST.ownedWeapons[id]) return;
+  if(money < cost) return;
+
+  ST.money = money - cost;
+  ST.ownedWeapons[id] = true;
+
   switchWeapon(id);
+
   updateMoneyUI();
+  buildShop();
 }
 
+
 function buyUpgrade(id,cost){
-  if(ST.money<cost) return;
-  ST.money-=cost;
-  ST.upgrades[id]++;
-  if(id==="hp"){ ST.maxHp=100+ST.upgrades.hp*25; ST.hp=ST.maxHp; updateHealthUI(); }
+  const u = UPGRADES.find(x => x.id === id);
+  if(!u) return;
+
+  const lvl = Number(ST.upgrades[id]) || 0;
+  const price = Number(cost);
+
+  if(lvl >= u.maxLvl) return;
+
+  const money = getShopMoney();
+
+  if(money < price) return;
+
+  ST.money = money - price;
+  ST.upgrades[id] = lvl + 1;
+
+  if(id === "hp"){
+    ST.maxHp = 100 + ST.upgrades.hp * 25;
+    ST.hp = ST.maxHp;
+    updateHealthUI();
+  }
+
   updateMoneyUI();
+  buildShop();
 }
 
 function switchWeapon(id){
@@ -1381,8 +1478,11 @@ function updateAmmoUI(){
   document.getElementById("wpn-name").textContent=wpn().name;
 }
 function updateMoneyUI(){
-  document.getElementById("m-val").textContent=ST.money;
-  document.getElementById("shop-money").textContent="💰 "+ST.money;
+  const money = getShopMoney();
+
+  document.getElementById("m-val").textContent = money;
+  document.getElementById("shop-money").textContent = "💰 " + money;
+}
 }
 function updateWeaponBar(){
   const bar=document.getElementById("weapon-bar"); bar.innerHTML="";
