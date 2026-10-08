@@ -1,198 +1,116 @@
 <!DOCTYPE html>
 <html lang="sv">
-
 <head>
-  <meta charset="UTF-8">
-
-  <meta
-    name="viewport"
-    content="width=device-width, initial-scale=1.0"
-  >
-
-  <title>3D Multiplayer World</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>3D Multiplayer</title>
 
   <style>
-
-    html,
-    body {
+    html, body {
       margin: 0;
-      padding: 0;
-
       width: 100%;
       height: 100%;
-
       overflow: hidden;
-
-      background: #87ceeb;
-
       font-family: Arial, sans-serif;
     }
 
-    #game {
-      width: 100%;
-      height: 100%;
+    body {
+      background: #87ceeb;
+    }
+
+    canvas {
+      display: block;
     }
 
     #info {
       position: fixed;
-
       top: 15px;
       left: 15px;
-
       z-index: 10;
-
-      padding: 12px 16px;
-
-      background: rgba(0, 0, 0, 0.65);
-
       color: white;
-
+      background: rgba(0,0,0,0.45);
+      padding: 10px 14px;
       border-radius: 10px;
-
+      font-size: 14px;
       user-select: none;
-
-      backdrop-filter: blur(5px);
-    }
-
-    #players {
-      color: #8cff8c;
-    }
-
-    #status {
-      margin-top: 5px;
-
-      font-size: 13px;
-
-      color: #aaa;
     }
 
     #start {
       position: fixed;
-
-      left: 50%;
-      top: 50%;
-
-      transform: translate(-50%, -50%);
-
+      inset: 0;
       z-index: 20;
-
-      padding: 20px 30px;
-
-      border: none;
-
-      border-radius: 12px;
-
-      background: rgba(20, 20, 20, 0.9);
-
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      background: rgba(0,0,0,0.45);
       color: white;
-
-      font-size: 20px;
-
       cursor: pointer;
-
-      box-shadow:
-        0 10px 40px rgba(0, 0, 0, 0.4);
+      text-align: center;
     }
 
-    #start:hover {
-      background: rgba(40, 40, 40, 0.95);
+    #start h1 {
+      font-size: 40px;
+      margin: 0 0 10px;
     }
 
+    #start p {
+      font-size: 18px;
+    }
+
+    .nametag {
+      color: white;
+      background: rgba(0,0,0,0.65);
+      padding: 4px 8px;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: bold;
+      white-space: nowrap;
+      pointer-events: none;
+      user-select: none;
+      text-shadow: 0 1px 2px black;
+    }
   </style>
-
-
-  <!--
-    Import map
-    Gör att Three.js addons fungerar direkt
-  -->
 
   <script type="importmap">
   {
     "imports": {
-      "three":
-        "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js",
-
-      "three/addons/":
-        "https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/"
+      "three": "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js",
+      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/"
     }
   }
   </script>
-
 </head>
-
 
 <body>
 
-
-  <div id="game"></div>
-
-
   <div id="info">
-
-    <b>🌍 3D Multiplayer</b>
-
-    <br><br>
-
-    WASD = gå
-
-    <br>
-
-    SPACE = hoppa
-
-    <br>
-
-    Mus = titta
-
-    <br><br>
-
-    <span id="players">
-      Spelare: 1
-    </span>
-
-    <div id="status">
-      Ansluter...
-    </div>
-
+    Spelare: <span id="playerCount">1</span>
   </div>
 
+  <div id="start">
+    <h1>🌳 3D Multiplayer</h1>
+    <p>Klicka för att spela</p>
+    <p>WASD = gå · SPACE = hoppa · ESC = mus</p>
+  </div>
 
-  <button id="start">
-    KLICKA FÖR ATT SPELA
-  </button>
-
-
-  <!-- Supabase -->
-
-  <script
-    src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2">
-  </script>
-
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
   <script type="module">
 
-
     import * as THREE from "three";
-
-    import {
-      PointerLockControls
-    } from "three/addons/controls/PointerLockControls.js";
+    import { PointerLockControls } from "three/addons/controls/PointerLockControls.js";
 
 
-    // ============================================================
+    // =====================================================
     // SUPABASE
-    // ============================================================
-
-    // ============================================================
-    // VIKTIGT:
-    // BEHÅLL DINA EGNA VÄRDEN HÄR
-    // ============================================================
+    // =====================================================
 
     const SUPABASE_URL =
       "https://vdlezuortcobvypkhfnn.supabase.co";
 
     const SUPABASE_KEY =
       "sb_publishable_KGwlKLA38h3LVlZIWBfnsQ_496oon4z";
-
 
     const supabaseClient =
       supabase.createClient(
@@ -201,56 +119,44 @@
       );
 
 
-    // ============================================================
-    // SPELAR-ID
-    // ============================================================
+    // =====================================================
+    // SPELARENS NAMN
+    // =====================================================
 
-    const playerId =
-      crypto.randomUUID();
+    let playerName = prompt("Vad heter du?");
 
+    if (!playerName || playerName.trim() === "") {
+      playerName = "Spelare";
+    }
 
-    // ============================================================
-    // THREE.JS SCENE
-    // ============================================================
-
-    const scene =
-      new THREE.Scene();
+    playerName = playerName.substring(0, 16);
 
 
-    // Himmel
+    // =====================================================
+    // THREE.JS
+    // =====================================================
 
-    scene.background =
-      new THREE.Color(
-        0x87ceeb
-      );
+    const scene = new THREE.Scene();
 
+    scene.background = new THREE.Color(0x87ceeb);
 
-    // Dimma
-
-    scene.fog =
-      new THREE.Fog(
-        0x87ceeb,
-        100,
-        900
-      );
+    scene.fog = new THREE.Fog(
+      0x87ceeb,
+      300,
+      1800
+    );
 
 
-    // ============================================================
+    // =====================================================
     // KAMERA
-    // ============================================================
+    // =====================================================
 
-    const camera =
-      new THREE.PerspectiveCamera(
-        75,
-
-        window.innerWidth /
-        window.innerHeight,
-
-        0.1,
-
-        5000
-      );
-
+    const camera = new THREE.PerspectiveCamera(
+      75,
+      window.innerWidth / window.innerHeight,
+      0.1,
+      3000
+    );
 
     camera.position.set(
       0,
@@ -259,154 +165,91 @@
     );
 
 
-    // ============================================================
+    // =====================================================
     // RENDERER
-    // ============================================================
+    // =====================================================
 
-    const renderer =
-      new THREE.WebGLRenderer({
-        antialias: true
-      });
-
+    const renderer = new THREE.WebGLRenderer({
+      antialias: true
+    });
 
     renderer.setSize(
       window.innerWidth,
       window.innerHeight
     );
 
-
     renderer.setPixelRatio(
-      Math.min(
-        window.devicePixelRatio,
-        2
-      )
+      Math.min(window.devicePixelRatio, 2)
+    );
+
+    renderer.shadowMap.enabled = true;
+
+    document.body.appendChild(
+      renderer.domElement
     );
 
 
-    renderer.shadowMap.enabled =
-      true;
-
-
-    renderer.shadowMap.type =
-      THREE.PCFSoftShadowMap;
-
-
-    document
-      .getElementById("game")
-      .appendChild(
-        renderer.domElement
-      );
-
-
-    // ============================================================
+    // =====================================================
     // LJUS
-    // ============================================================
+    // =====================================================
 
-    const ambientLight =
+    const hemisphereLight =
       new THREE.HemisphereLight(
-        0xbde7ff,
-        0x4b6338,
-        2
+        0xffffff,
+        0x4b7a35,
+        1.5
       );
 
-
-    scene.add(
-      ambientLight
-    );
+    scene.add(hemisphereLight);
 
 
     const sun =
       new THREE.DirectionalLight(
         0xffffff,
-        2.5
+        2
       );
 
-
     sun.position.set(
-      150,
-      250,
+      200,
+      300,
       100
     );
 
+    sun.castShadow = true;
 
-    sun.castShadow =
-      true;
+    sun.shadow.mapSize.width = 2048;
+    sun.shadow.mapSize.height = 2048;
 
+    sun.shadow.camera.left = -500;
+    sun.shadow.camera.right = 500;
+    sun.shadow.camera.top = 500;
+    sun.shadow.camera.bottom = -500;
 
-    sun.shadow.mapSize.width =
-      2048;
-
-    sun.shadow.mapSize.height =
-      2048;
-
-
-    sun.shadow.camera.left =
-      -300;
-
-    sun.shadow.camera.right =
-      300;
-
-    sun.shadow.camera.top =
-      300;
-
-    sun.shadow.camera.bottom =
-      -300;
+    scene.add(sun);
 
 
-    scene.add(
-      sun
-    );
-
-
-    // ============================================================
-    // FINARE GRÄS
-    // ============================================================
-
-    /*
-      Vi skapar en liten gräs-textur direkt i JavaScript.
-      Därför behöver du inte ladda upp någon bild.
-    */
+    // =====================================================
+    // GRÄS
+    // =====================================================
 
     const grassCanvas =
-      document.createElement(
-        "canvas"
-      );
+      document.createElement("canvas");
 
+    grassCanvas.width = 256;
+    grassCanvas.height = 256;
 
-    grassCanvas.width =
-      256;
+    const grassCtx =
+      grassCanvas.getContext("2d");
 
-    grassCanvas.height =
-      256;
-
-
-    const grassContext =
-      grassCanvas.getContext(
-        "2d"
-      );
-
-
-    // Basfärg
-
-    grassContext.fillStyle =
-      "#4f9f3f";
-
-
-    grassContext.fillRect(
+    grassCtx.fillStyle = "#4f8f3a";
+    grassCtx.fillRect(
       0,
       0,
       256,
       256
     );
 
-
-    // Små grässtrån
-
-    for (
-      let i = 0;
-      i < 1800;
-      i++
-    ) {
+    for (let i = 0; i < 5000; i++) {
 
       const x =
         Math.random() * 256;
@@ -414,64 +257,32 @@
       const y =
         Math.random() * 256;
 
+      const brightness =
+        45 + Math.random() * 40;
 
-      const length =
-        2 +
-        Math.random() * 8;
+      grassCtx.fillStyle =
+        `rgb(${30 + brightness / 5},
+             ${90 + brightness},
+             ${25 + brightness / 4})`;
 
-
-      const green =
-        80 +
-        Math.floor(
-          Math.random() * 70
-        );
-
-
-      grassContext.strokeStyle =
-        `rgb(
-          ${30 + Math.floor(Math.random() * 30)},
-          ${green},
-          ${30 + Math.floor(Math.random() * 30)}
-        )`;
-
-
-      grassContext.lineWidth =
-        0.7;
-
-
-      grassContext.beginPath();
-
-      grassContext.moveTo(
+      grassCtx.fillRect(
         x,
-        y
+        y,
+        1,
+        2
       );
-
-      grassContext.lineTo(
-        x +
-        (Math.random() - 0.5) * 3,
-
-        y -
-        length
-      );
-
-      grassContext.stroke();
-
     }
-
 
     const grassTexture =
       new THREE.CanvasTexture(
         grassCanvas
       );
 
-
     grassTexture.wrapS =
       THREE.RepeatWrapping;
 
-
     grassTexture.wrapT =
       THREE.RepeatWrapping;
-
 
     grassTexture.repeat.set(
       250,
@@ -479,126 +290,28 @@
     );
 
 
-    grassTexture.colorSpace =
-      THREE.SRGBColorSpace;
-
-
-    const grassMaterial =
-      new THREE.MeshStandardMaterial({
-        map: grassTexture,
-
-        roughness: 1
-      });
-
-
-    const grassGeometry =
-      new THREE.PlaneGeometry(
-        5000,
-        5000
-      );
-
-
-    const grass =
+    const ground =
       new THREE.Mesh(
-        grassGeometry,
-        grassMaterial
+        new THREE.PlaneGeometry(
+          5000,
+          5000
+        ),
+        new THREE.MeshStandardMaterial({
+          map: grassTexture
+        })
       );
 
-
-    grass.rotation.x =
+    ground.rotation.x =
       -Math.PI / 2;
 
+    ground.receiveShadow = true;
 
-    grass.receiveShadow =
-      true;
-
-
-    scene.add(
-      grass
-    );
+    scene.add(ground);
 
 
-    // ============================================================
-    // LITE GRÄSDETALJER
-    // ============================================================
-
-    /*
-      Små grässtrån nära spelaren.
-      Detta ger mer djup utan att skapa tusentals objekt.
-    */
-
-    const grassBladeMaterial =
-      new THREE.MeshBasicMaterial({
-        color: 0x3f8f35,
-        side: THREE.DoubleSide
-      });
-
-
-    const bladeGeometry =
-      new THREE.BufferGeometry();
-
-
-    const bladePositions = [];
-
-
-    for (
-      let i = 0;
-      i < 900;
-      i++
-    ) {
-
-      const x =
-        (Math.random() - 0.5) *
-        250;
-
-      const z =
-        (Math.random() - 0.5) *
-        250;
-
-
-      const height =
-        0.15 +
-        Math.random() * 0.35;
-
-
-      bladePositions.push(
-        x,
-        0,
-        z,
-
-        x,
-        height,
-        z
-      );
-
-    }
-
-
-    bladeGeometry.setAttribute(
-      "position",
-
-      new THREE.Float32BufferAttribute(
-        bladePositions,
-        3
-      )
-    );
-
-
-    const grassBlades =
-      new THREE.LineSegments(
-        bladeGeometry,
-        grassBladeMaterial
-      );
-
-
-    scene.add(
-      grassBlades
-    );
-
-
-    // ============================================================
-    // FIRST PERSON
-    // ============================================================
+    // =====================================================
+    // PLAYER
+    // =====================================================
 
     const controls =
       new PointerLockControls(
@@ -607,55 +320,215 @@
       );
 
 
-    document
-      .getElementById("start")
-      .addEventListener(
-        "click",
+    // =====================================================
+    // TANGENTER
+    // =====================================================
 
-        () => {
+    const keys = {
+      forward: false,
+      backward: false,
+      left: false,
+      right: false
+    };
 
-          controls.lock();
+    let jumpPressed = false;
 
+
+    document.addEventListener(
+      "keydown",
+      (event) => {
+
+        if (event.code === "KeyW")
+          keys.forward = true;
+
+        if (event.code === "KeyS")
+          keys.backward = true;
+
+        if (event.code === "KeyA")
+          keys.left = true;
+
+        if (event.code === "KeyD")
+          keys.right = true;
+
+        if (
+          event.code === "Space" &&
+          !event.repeat
+        ) {
+          jumpPressed = true;
         }
-      );
+      }
+    );
 
+
+    document.addEventListener(
+      "keyup",
+      (event) => {
+
+        if (event.code === "KeyW")
+          keys.forward = false;
+
+        if (event.code === "KeyS")
+          keys.backward = false;
+
+        if (event.code === "KeyA")
+          keys.left = false;
+
+        if (event.code === "KeyD")
+          keys.right = false;
+      }
+    );
+
+
+    // =====================================================
+    // START
+    // =====================================================
+
+    const startScreen =
+      document.getElementById("start");
+
+    startScreen.addEventListener(
+      "click",
+      () => {
+
+        controls.lock();
+
+      }
+    );
 
     controls.addEventListener(
       "lock",
-
       () => {
 
-        document
-          .getElementById("start")
-          .style.display =
+        startScreen.style.display =
           "none";
 
       }
     );
 
-
     controls.addEventListener(
       "unlock",
-
       () => {
 
-        document
-          .getElementById("start")
-          .style.display =
-          "block";
+        startScreen.style.display =
+          "flex";
 
       }
     );
 
 
-    // ============================================================
+    // =====================================================
+    // EGEN SPELARE
+    // =====================================================
+
+    let velocityY = 0;
+
+    let onGround = true;
+
+    const moveSpeed = 8;
+
+    const gravity = 22;
+
+    const jumpStrength = 8;
+
+
+    // =====================================================
+    // ID
+    // =====================================================
+
+    const playerId =
+      crypto.randomUUID();
+
+
+    // =====================================================
     // ANDRA SPELARE
-    // ============================================================
+    // =====================================================
 
     const otherPlayers = {};
 
 
-    function createPlayer() {
+    // =====================================================
+    // NAMETAG
+    // =====================================================
+
+    function createNametag(name) {
+
+      const canvas =
+        document.createElement("canvas");
+
+      canvas.width = 512;
+      canvas.height = 128;
+
+      const ctx =
+        canvas.getContext("2d");
+
+      ctx.clearRect(
+        0,
+        0,
+        canvas.width,
+        canvas.height
+      );
+
+      ctx.font =
+        "bold 52px Arial";
+
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+
+      ctx.fillStyle =
+        "rgba(0,0,0,0.65)";
+
+      ctx.fillRect(
+        45,
+        20,
+        422,
+        88
+      );
+
+      ctx.fillStyle =
+        "white";
+
+      ctx.fillText(
+        name,
+        256,
+        64
+      );
+
+      const texture =
+        new THREE.CanvasTexture(
+          canvas
+        );
+
+      texture.minFilter =
+        THREE.LinearFilter;
+
+      const material =
+        new THREE.SpriteMaterial({
+          map: texture,
+          transparent: true,
+          depthTest: false
+        });
+
+      const sprite =
+        new THREE.Sprite(material);
+
+      sprite.scale.set(
+        2.8,
+        0.7,
+        1
+      );
+
+      return sprite;
+    }
+
+
+    // =====================================================
+    // SKAPA ANDRA SPELARE
+    // =====================================================
+
+    function createPlayer(
+      id,
+      name
+    ) {
 
       const group =
         new THREE.Group();
@@ -663,136 +536,103 @@
 
       // Kropp
 
-      const bodyGeometry =
-        new THREE.CapsuleGeometry(
-          0.35,
-          1.0,
-          4,
-          8
-        );
-
-
-      const bodyMaterial =
-        new THREE.MeshStandardMaterial({
-          color: 0x3366ff,
-          roughness: 0.7
-        });
-
-
       const body =
         new THREE.Mesh(
-          bodyGeometry,
-          bodyMaterial
+          new THREE.CapsuleGeometry(
+            0.35,
+            0.8,
+            4,
+            8
+          ),
+          new THREE.MeshStandardMaterial({
+            color: 0x2979ff
+          })
         );
-
 
       body.position.y =
         0.9;
 
+      body.castShadow = true;
 
-      body.castShadow =
-        true;
-
-
-      group.add(
-        body
-      );
+      group.add(body);
 
 
       // Huvud
 
-      const headGeometry =
-        new THREE.SphereGeometry(
-          0.28,
-          16,
-          16
-        );
-
-
-      const headMaterial =
-        new THREE.MeshStandardMaterial({
-          color: 0xffcc99,
-          roughness: 0.8
-        });
-
-
       const head =
         new THREE.Mesh(
-          headGeometry,
-          headMaterial
+          new THREE.SphereGeometry(
+            0.32,
+            16,
+            16
+          ),
+          new THREE.MeshStandardMaterial({
+            color: 0xffc7a0
+          })
         );
 
-
       head.position.y =
-        1.65;
+        1.75;
+
+      head.castShadow = true;
+
+      group.add(head);
 
 
-      head.castShadow =
-        true;
+      // Nametag
+
+      const nametag =
+        createNametag(
+          name || "Spelare"
+        );
+
+      nametag.position.y =
+        2.35;
+
+      group.add(nametag);
 
 
-      group.add(
-        head
-      );
+      scene.add(group);
 
 
-      scene.add(
-        group
-      );
+      group.userData = {
+
+        targetX: 0,
+        targetY: 0,
+        targetZ: 0,
+
+        targetRotation: 0,
+
+        targetName: name || "Spelare"
+
+      };
 
 
-      return group;
+      otherPlayers[id] =
+        group;
 
     }
 
 
-    // ============================================================
-    // UPPDATERA ANNAN SPELARE
-    // ============================================================
+    // =====================================================
+    // UPPDATERA SPELARE
+    // =====================================================
 
     function updatePlayer(
       id,
       data
     ) {
 
-      if (
-        id === playerId
-      )
+      if (id === playerId)
         return;
 
 
-      if (
-        !otherPlayers[id]
-      ) {
+      if (!otherPlayers[id]) {
 
-        otherPlayers[id] =
-          createPlayer();
-
-
-        otherPlayers[id]
-          .position.set(
-            data.x,
-            0,
-            data.z
-          );
-
-
-        otherPlayers[id]
-          .userData.targetX =
-          data.x;
-
-
-        otherPlayers[id]
-          .userData.targetZ =
-          data.z;
-
-
-        otherPlayers[id]
-          .userData.targetRotation =
-          data.rotation || 0;
-
-
-        return;
+        createPlayer(
+          id,
+          data.name
+        );
 
       }
 
@@ -801,105 +641,139 @@
         otherPlayers[id];
 
 
-      // Spara målet
-
       player.userData.targetX =
         data.x;
 
+      player.userData.targetY =
+        data.y;
 
       player.userData.targetZ =
         data.z;
 
-
       player.userData.targetRotation =
-        data.rotation || 0;
+        data.rotation;
 
-    }
-
-
-    // ============================================================
-    // TA BORT SPELARE
-    // ============================================================
-
-    function removePlayer(
-      id
-    ) {
 
       if (
-        !otherPlayers[id]
-      )
-        return;
+        data.name &&
+        data.name !==
+        player.userData.targetName
+      ) {
 
+        player.userData.targetName =
+          data.name;
 
-      scene.remove(
-        otherPlayers[id]
-      );
-
-
-      delete otherPlayers[id];
+      }
 
     }
 
 
-    // ============================================================
+    // =====================================================
+    // SMOOTH REMOTE PLAYERS
+    // =====================================================
+
+    function smoothOtherPlayers(
+      delta
+    ) {
+
+      const smooth =
+        1 - Math.pow(
+          0.001,
+          delta
+        );
+
+
+      for (
+        const id in otherPlayers
+      ) {
+
+        const player =
+          otherPlayers[id];
+
+
+        player.position.x +=
+          (
+            player.userData.targetX -
+            player.position.x
+          ) * smooth;
+
+
+        player.position.y +=
+          (
+            player.userData.targetY -
+            player.position.y
+          ) * smooth;
+
+
+        player.position.z +=
+          (
+            player.userData.targetZ -
+            player.position.z
+          ) * smooth;
+
+
+        let targetRotation =
+          player.userData.targetRotation;
+
+
+        let difference =
+          targetRotation -
+          player.rotation.y;
+
+
+        while (
+          difference > Math.PI
+        ) {
+          difference -=
+            Math.PI * 2;
+        }
+
+        while (
+          difference < -Math.PI
+        ) {
+          difference +=
+            Math.PI * 2;
+        }
+
+
+        player.rotation.y +=
+          difference * smooth;
+
+      }
+
+    }
+
+
+    // =====================================================
     // SUPABASE REALTIME
-    // ============================================================
+    // =====================================================
 
     const channel =
       supabaseClient.channel(
         "game-world",
-
         {
           config: {
-
             presence: {
               key: playerId
-            },
-
-            broadcast: {
-              self: false
             }
-
           }
-
         }
       );
 
 
-    // ============================================================
+    // =====================================================
     // PRESENCE SYNC
-    // ============================================================
+    // =====================================================
 
     channel.on(
-
       "presence",
-
       {
         event: "sync"
       },
-
       () => {
 
         const state =
           channel.presenceState();
-
-
-        for (
-          const id in otherPlayers
-        ) {
-
-          if (
-            !state[id]
-          ) {
-
-            removePlayer(
-              id
-            );
-
-          }
-
-        }
-
 
         for (
           const id in state
@@ -911,121 +785,118 @@
             continue;
 
 
-          const entries =
-            state[id];
+          const presence =
+            state[id]?.[0];
 
-
-          if (
-            entries &&
-            entries.length > 0
-          ) {
+          if (presence) {
 
             updatePlayer(
               id,
-              entries[0]
+              presence
             );
 
           }
 
         }
 
-
-        updatePlayerCount();
+        updatePlayerCount(
+          Object.keys(state).length
+        );
 
       }
-
     );
 
 
-    // ============================================================
+    // =====================================================
     // NY SPELARE
-    // ============================================================
+    // =====================================================
 
     channel.on(
-
       "presence",
-
       {
         event: "join"
       },
+      ({ newPresences }) => {
 
-      ({
-        key,
-        newPresences
-      }) => {
-
-        if (
-          key === playerId
-        )
-          return;
-
-
-        if (
-          newPresences &&
-          newPresences.length
+        for (
+          const presence
+          of newPresences
         ) {
 
+          if (
+            presence.playerId ===
+            playerId
+          )
+            continue;
+
+
           updatePlayer(
-            key,
-            newPresences[0]
+            presence.playerId,
+            presence
           );
 
         }
 
-
         updatePlayerCount();
 
       }
-
     );
 
 
-    // ============================================================
+    // =====================================================
     // SPELARE LÄMNAR
-    // ============================================================
+    // =====================================================
 
     channel.on(
-
       "presence",
-
       {
         event: "leave"
       },
+      ({ leftPresences }) => {
 
-      ({
-        key
-      }) => {
+        for (
+          const presence
+          of leftPresences
+        ) {
 
-        removePlayer(
-          key
-        );
+          const id =
+            presence.playerId;
 
+
+          if (
+            otherPlayers[id]
+          ) {
+
+            scene.remove(
+              otherPlayers[id]
+            );
+
+            delete otherPlayers[id];
+
+          }
+
+        }
 
         updatePlayerCount();
 
       }
-
     );
 
 
-    // ============================================================
-    // POSITION BROADCAST
-    // ============================================================
+    // =====================================================
+    // MOVEMENT BROADCAST
+    // =====================================================
 
     channel.on(
-
       "broadcast",
-
       {
         event: "move"
       },
-
-      ({
-        payload
-      }) => {
+      ({ payload }) => {
 
         if (
-          payload.id === playerId
+          payload.id ===
+          playerId
         )
           return;
 
@@ -1036,37 +907,45 @@
         );
 
       }
-
     );
 
 
-    // ============================================================
-    // ANSLUT TILL WORLD
-    // ============================================================
+    // =====================================================
+    // ANSLUT
+    // =====================================================
 
     channel.subscribe(
-
       async (status) => {
 
         if (
           status === "SUBSCRIBED"
         ) {
 
-          document
-            .getElementById("status")
-            .textContent =
-            "Multiplayer ansluten!";
-
-
           await channel.track({
 
+            playerId:
+
+              playerId,
+
+            name:
+
+              playerName,
+
             x:
+
               camera.position.x,
 
+            y:
+
+              camera.position.y -
+              1.7,
+
             z:
+
               camera.position.z,
 
             rotation:
+
               camera.rotation.y
 
           });
@@ -1074,354 +953,52 @@
         }
 
       }
-
     );
 
 
-    // ============================================================
-    // SPELARRÄKNARE
-    // ============================================================
-
-    function updatePlayerCount() {
-
-      const state =
-        channel.presenceState();
-
-
-      const count =
-        Object.keys(state).length;
-
-
-      document
-        .getElementById("players")
-        .textContent =
-        "Spelare: " + count;
-
-    }
-
-
-    // ============================================================
-    // TANGENTBORD
-    // ============================================================
-
-    const keys = {
-
-      w: false,
-      a: false,
-      s: false,
-      d: false,
-
-      space: false
-
-    };
-
-
-    document.addEventListener(
-
-      "keydown",
-
-      (event) => {
-
-        if (
-          event.key === "w" ||
-          event.key === "W"
-        ) {
-
-          keys.w = true;
-
-        }
-
-
-        if (
-          event.key === "a" ||
-          event.key === "A"
-        ) {
-
-          keys.a = true;
-
-        }
-
-
-        if (
-          event.key === "s" ||
-          event.key === "S"
-        ) {
-
-          keys.s = true;
-
-        }
-
-
-        if (
-          event.key === "d" ||
-          event.key === "D"
-        ) {
-
-          keys.d = true;
-
-        }
-
-
-        if (
-          event.code === "Space"
-        ) {
-
-          event.preventDefault();
-
-          keys.space = true;
-
-        }
-
-      }
-
-    );
-
-
-    document.addEventListener(
-
-      "keyup",
-
-      (event) => {
-
-        if (
-          event.key === "w" ||
-          event.key === "W"
-        ) {
-
-          keys.w = false;
-
-        }
-
-
-        if (
-          event.key === "a" ||
-          event.key === "A"
-        ) {
-
-          keys.a = false;
-
-        }
-
-
-        if (
-          event.key === "s" ||
-          event.key === "S"
-        ) {
-
-          keys.s = false;
-
-        }
-
-
-        if (
-          event.key === "d" ||
-          event.key === "D"
-        ) {
-
-          keys.d = false;
-
-        }
-
-
-        if (
-          event.code === "Space"
-        ) {
-
-          keys.space = false;
-
-        }
-
-      }
-
-    );
-
-
-    // ============================================================
-    // RÖRELSE
-    // ============================================================
-
-    const clock =
-      new THREE.Clock();
-
-
-    const velocity =
-      new THREE.Vector3();
-
-
-    const direction =
-      new THREE.Vector3();
-
-
-    const moveSpeed =
-      8;
-
-
-    const gravity =
-      22;
-
-
-    const jumpStrength =
-      8;
-
-
-    let verticalVelocity =
+    // =====================================================
+    // SKICKA POSITION
+    // =====================================================
+
+    let lastBroadcast =
       0;
 
 
-    let onGround =
-      true;
-
-
-    // ============================================================
-    // MOVE PLAYER
-    // ============================================================
-
-    function movePlayer(
-      delta
+    function broadcastMovement(
+      time
     ) {
 
       if (
-        !controls.isLocked
-      )
+        time - lastBroadcast <
+        80
+      ) {
         return;
-
-
-      // ----------------------------------------------------------
-      // HOPPA
-      // ----------------------------------------------------------
-
-      if (
-        keys.space &&
-        onGround
-      ) {
-
-        verticalVelocity =
-          jumpStrength;
-
-        onGround =
-          false;
-
       }
 
 
-      // ----------------------------------------------------------
-      // GRAVITATION
-      // ----------------------------------------------------------
-
-      verticalVelocity -=
-        gravity * delta;
+      lastBroadcast =
+        time;
 
 
-      camera.position.y +=
-        verticalVelocity * delta;
+      channel.send({
 
+        type: "broadcast",
 
-      // Marknivå
-
-      if (
-        camera.position.y <= 1.7
-      ) {
-
-        camera.position.y =
-          1.7;
-
-        verticalVelocity =
-          0;
-
-        onGround =
-          true;
-
-      }
-
-
-      // ----------------------------------------------------------
-      // RÖRELSE
-      // ----------------------------------------------------------
-
-      direction.set(
-        0,
-        0,
-        0
-      );
-
-
-      if (keys.w)
-        direction.z -= 1;
-
-
-      if (keys.s)
-        direction.z += 1;
-
-
-      if (keys.a)
-        direction.x -= 1;
-
-
-      if (keys.d)
-        direction.x += 1;
-
-
-      if (
-        direction.lengthSq() > 0
-      ) {
-
-        direction.normalize();
-
-
-        velocity.x =
-          direction.x *
-          moveSpeed;
-
-        velocity.z =
-          direction.z *
-          moveSpeed;
-
-
-        controls.moveRight(
-          velocity.x * delta
-        );
-
-
-        controls.moveForward(
-          -velocity.z * delta
-        );
-
-      }
-
-    }
-
-
-    // ============================================================
-    // SKICKA POSITION
-    // ============================================================
-
-    let sendTimer =
-      0;
-
-
-    async function sendPosition() {
-
-      if (
-        !controls.isLocked
-      )
-        return;
-
-
-      await channel.send({
-
-        type:
-          "broadcast",
-
-        event:
-          "move",
+        event: "move",
 
         payload: {
 
           id:
             playerId,
 
+          name:
+            playerName,
+
           x:
             camera.position.x,
+
+          y:
+            camera.position.y - 1.7,
 
           z:
             camera.position.z,
@@ -1436,105 +1013,46 @@
     }
 
 
-    // ============================================================
-    // SMOOTH MULTIPLAYER
-    // ============================================================
+    // =====================================================
+    // PLAYER COUNT
+    // =====================================================
 
-    function smoothOtherPlayers(
-      delta
+    function updatePlayerCount(
+      count
     ) {
 
-      for (
-        const id in otherPlayers
+      if (
+        count === undefined
       ) {
 
-        const player =
-          otherPlayers[id];
+        const state =
+          channel.presenceState();
 
-
-        if (
-          player.userData.targetX ===
-          undefined
-        ) {
-
-          continue;
-
-        }
-
-
-        /*
-          Smooth interpolation.
-
-          Detta gör att andra spelare
-          inte hoppar mellan positioner.
-        */
-
-        const smooth =
-          1 -
-          Math.pow(
-            0.001,
-            delta
-          );
-
-
-        player.position.x +=
-
-          (
-            player.userData.targetX -
-            player.position.x
-          ) * smooth;
-
-
-        player.position.z +=
-
-          (
-            player.userData.targetZ -
-            player.position.z
-          ) * smooth;
-
-
-        // --------------------------------------------------------
-        // SMOOTH ROTATION
-        // --------------------------------------------------------
-
-        const targetRotation =
-          player.userData.targetRotation;
-
-
-        let rotationDifference =
-          targetRotation -
-          player.rotation.y;
-
-
-        rotationDifference =
-          Math.atan2(
-
-            Math.sin(
-              rotationDifference
-            ),
-
-            Math.cos(
-              rotationDifference
-            )
-
-          );
-
-
-        player.rotation.y +=
-
-          rotationDifference *
-          smooth;
+        count =
+          Object.keys(state).length;
 
       }
+
+
+      document.getElementById(
+        "playerCount"
+      ).textContent =
+        count;
 
     }
 
 
-    // ============================================================
+    // =====================================================
     // GAME LOOP
-    // ============================================================
+    // =====================================================
 
-    function animate() {
+    let previousTime =
+      performance.now();
+
+
+    function animate(
+      time
+    ) {
 
       requestAnimationFrame(
         animate
@@ -1543,46 +1061,137 @@
 
       const delta =
         Math.min(
-          clock.getDelta(),
+          (time - previousTime) /
+          1000,
           0.05
         );
 
 
-      // Egen spelare
-
-      movePlayer(
-        delta
-      );
+      previousTime =
+        time;
 
 
-      // Andra spelare
+      // -------------------------
+      // MOVEMENT
+      // -------------------------
+
+      if (
+        controls.isLocked
+      ) {
+
+        let moveX = 0;
+        let moveZ = 0;
+
+
+        if (keys.forward)
+          moveZ += 1;
+
+        if (keys.backward)
+          moveZ -= 1;
+
+        if (keys.left)
+          moveX -= 1;
+
+        if (keys.right)
+          moveX += 1;
+
+
+        const length =
+          Math.sqrt(
+            moveX * moveX +
+            moveZ * moveZ
+          );
+
+
+        if (length > 0) {
+
+          moveX /= length;
+          moveZ /= length;
+
+
+          controls.moveRight(
+            moveX *
+            moveSpeed *
+            delta
+          );
+
+          controls.moveForward(
+            moveZ *
+            moveSpeed *
+            delta
+          );
+
+        }
+
+
+        // -------------------------
+        // HOPP
+        // -------------------------
+
+        if (
+          jumpPressed &&
+          onGround
+        ) {
+
+          velocityY =
+            jumpStrength;
+
+          onGround =
+            false;
+
+        }
+
+        jumpPressed =
+          false;
+
+
+        velocityY -=
+          gravity * delta;
+
+
+        camera.position.y +=
+          velocityY * delta;
+
+
+        if (
+          camera.position.y <= 1.7
+        ) {
+
+          camera.position.y =
+            1.7;
+
+          velocityY =
+            0;
+
+          onGround =
+            true;
+
+        }
+
+      }
+
+
+      // -------------------------
+      // ANDRA SPELARE
+      // -------------------------
 
       smoothOtherPlayers(
         delta
       );
 
 
-      // Skicka position
+      // -------------------------
+      // BROADCAST
+      // -------------------------
 
-      sendTimer +=
-        delta;
-
-
-      if (
-        sendTimer >
-        0.08
-      ) {
-
-        sendTimer =
-          0;
+      broadcastMovement(
+        time
+      );
 
 
-        sendPosition();
-
-      }
-
-
-      // Render
+      // -------------------------
+      // RENDER
+      // -------------------------
 
       renderer.render(
         scene,
@@ -1592,42 +1201,34 @@
     }
 
 
-    animate();
+    animate(
+      performance.now()
+    );
 
 
-    // ============================================================
-    // WINDOW RESIZE
-    // ============================================================
+    // =====================================================
+    // RESIZE
+    // =====================================================
 
     window.addEventListener(
-
       "resize",
-
       () => {
 
         camera.aspect =
           window.innerWidth /
           window.innerHeight;
 
-
         camera.updateProjectionMatrix();
 
-
         renderer.setSize(
-
           window.innerWidth,
-
           window.innerHeight
-
         );
 
       }
-
     );
-
 
   </script>
 
 </body>
-
 </html>
