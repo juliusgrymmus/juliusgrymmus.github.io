@@ -1,19 +1,30 @@
 <!DOCTYPE html>
 <html lang="sv">
+
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  >
 
   <title>3D Multiplayer World</title>
 
   <style>
-    html, body {
+
+    html,
+    body {
       margin: 0;
       padding: 0;
-      overflow: hidden;
+
       width: 100%;
       height: 100%;
+
+      overflow: hidden;
+
       background: #87ceeb;
+
       font-family: Arial, sans-serif;
     }
 
@@ -24,22 +35,40 @@
 
     #info {
       position: fixed;
+
       top: 15px;
       left: 15px;
+
       z-index: 10;
 
       padding: 12px 16px;
 
       background: rgba(0, 0, 0, 0.65);
+
       color: white;
 
       border-radius: 10px;
 
       user-select: none;
+
+      backdrop-filter: blur(5px);
+    }
+
+    #players {
+      color: #8cff8c;
+    }
+
+    #status {
+      margin-top: 5px;
+
+      font-size: 13px;
+
+      color: #aaa;
     }
 
     #start {
       position: fixed;
+
       left: 50%;
       top: 50%;
 
@@ -50,69 +79,126 @@
       padding: 20px 30px;
 
       border: none;
+
       border-radius: 12px;
 
-      background: #222;
+      background: rgba(20, 20, 20, 0.9);
+
       color: white;
 
       font-size: 20px;
+
       cursor: pointer;
+
+      box-shadow:
+        0 10px 40px rgba(0, 0, 0, 0.4);
     }
 
-    #status {
-      margin-top: 5px;
-      font-size: 13px;
-      color: #aaa;
+    #start:hover {
+      background: rgba(40, 40, 40, 0.95);
     }
+
   </style>
 
-  <!-- Import map så Three.js-moduler fungerar direkt i webbläsaren -->
+
+  <!--
+    Import map
+    Gör att Three.js addons fungerar direkt
+  -->
+
   <script type="importmap">
   {
     "imports": {
-      "three": "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js",
-      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/"
+      "three":
+        "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js",
+
+      "three/addons/":
+        "https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/"
     }
   }
   </script>
+
 </head>
+
 
 <body>
 
+
   <div id="game"></div>
 
+
   <div id="info">
-    <b>3D Multiplayer</b><br>
-    WASD = gå<br>
-    Mus = titta<br>
-    <span id="players">Spelare: 1</span>
-    <div id="status">Ansluter...</div>
+
+    <b>🌍 3D Multiplayer</b>
+
+    <br><br>
+
+    WASD = gå
+
+    <br>
+
+    SPACE = hoppa
+
+    <br>
+
+    Mus = titta
+
+    <br><br>
+
+    <span id="players">
+      Spelare: 1
+    </span>
+
+    <div id="status">
+      Ansluter...
+    </div>
+
   </div>
+
 
   <button id="start">
     KLICKA FÖR ATT SPELA
   </button>
 
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <!-- Supabase -->
+
+  <script
+    src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2">
+  </script>
+
 
   <script type="module">
 
+
     import * as THREE from "three";
-    import { PointerLockControls } from "three/addons/controls/PointerLockControls.js";
+
+    import {
+      PointerLockControls
+    } from "three/addons/controls/PointerLockControls.js";
 
 
     // ============================================================
     // SUPABASE
     // ============================================================
 
-    // BYT UT DESSA TVÅ
-    const SUPABASE_URL = "https://vdlezuortcobvypkhfnn.supabase.co/";
-    const SUPABASE_KEY = "sb_publishable_KGwlKLA38h3LVlZIWBfnsQ_496oon4z";
+    // ============================================================
+    // VIKTIGT:
+    // BEHÅLL DINA EGNA VÄRDEN HÄR
+    // ============================================================
 
-    const supabaseClient = supabase.createClient(
-      SUPABASE_URL,
-      SUPABASE_KEY
-    );
+    const SUPABASE_URL =
+      "https://vdlezuortcobvypkhfnn.supabase.co";
+
+    const SUPABASE_KEY =
+      "sb_publishable_KGwlKLA38h3LVlZIWBfnsQ_496oon4z";
+
+
+    const supabaseClient =
+      supabase.createClient(
+        SUPABASE_URL,
+        SUPABASE_KEY
+      );
 
 
     // ============================================================
@@ -124,129 +210,47 @@
 
 
     // ============================================================
-    // THREE.JS
+    // THREE.JS SCENE
     // ============================================================
 
     const scene =
       new THREE.Scene();
 
+
+    // Himmel
+
     scene.background =
-      new THREE.Color(0x87ceeb);
+      new THREE.Color(
+        0x87ceeb
+      );
 
 
-    // Kamera
+    // Dimma
+
+    scene.fog =
+      new THREE.Fog(
+        0x87ceeb,
+        100,
+        900
+      );
+
+
+    // ============================================================
+    // KAMERA
+    // ============================================================
 
     const camera =
       new THREE.PerspectiveCamera(
         75,
-        window.innerWidth / window.innerHeight,
+
+        window.innerWidth /
+        window.innerHeight,
+
         0.1,
+
         5000
       );
 
-
-    // Renderer
-
-    const renderer =
-      new THREE.WebGLRenderer({
-        antialias: true
-      });
-
-    renderer.setSize(
-      window.innerWidth,
-      window.innerHeight
-    );
-
-    renderer.setPixelRatio(
-      Math.min(window.devicePixelRatio, 2)
-    );
-
-    document
-      .getElementById("game")
-      .appendChild(renderer.domElement);
-
-
-    // ============================================================
-    // LJUS
-    // ============================================================
-
-    const ambientLight =
-      new THREE.AmbientLight(
-        0xffffff,
-        1.5
-      );
-
-    scene.add(ambientLight);
-
-
-    const sun =
-      new THREE.DirectionalLight(
-        0xffffff,
-        2
-      );
-
-    sun.position.set(
-      100,
-      200,
-      100
-    );
-
-    scene.add(sun);
-
-
-    // ============================================================
-    // GRÄSMARK
-    // ============================================================
-
-    const grassGeometry =
-      new THREE.PlaneGeometry(
-        5000,
-        5000
-      );
-
-    const grassMaterial =
-      new THREE.MeshStandardMaterial({
-        color: 0x3d9b35
-      });
-
-    const grass =
-      new THREE.Mesh(
-        grassGeometry,
-        grassMaterial
-      );
-
-    grass.rotation.x =
-      -Math.PI / 2;
-
-    scene.add(grass);
-
-
-    // ============================================================
-    // GRID
-    // ============================================================
-
-    const grid =
-      new THREE.GridHelper(
-        5000,
-        500,
-        0x267026,
-        0x267026
-      );
-
-    grid.position.y = 0.01;
-
-    scene.add(grid);
-
-
-    // ============================================================
-    // FÖRSTAPERSONSKAMERA
-    // ============================================================
-
-    const controls =
-      new PointerLockControls(
-        camera,
-        document.body
-      );
 
     camera.position.set(
       0,
@@ -255,10 +259,359 @@
     );
 
 
+    // ============================================================
+    // RENDERER
+    // ============================================================
+
+    const renderer =
+      new THREE.WebGLRenderer({
+        antialias: true
+      });
+
+
+    renderer.setSize(
+      window.innerWidth,
+      window.innerHeight
+    );
+
+
+    renderer.setPixelRatio(
+      Math.min(
+        window.devicePixelRatio,
+        2
+      )
+    );
+
+
+    renderer.shadowMap.enabled =
+      true;
+
+
+    renderer.shadowMap.type =
+      THREE.PCFSoftShadowMap;
+
+
+    document
+      .getElementById("game")
+      .appendChild(
+        renderer.domElement
+      );
+
+
+    // ============================================================
+    // LJUS
+    // ============================================================
+
+    const ambientLight =
+      new THREE.HemisphereLight(
+        0xbde7ff,
+        0x4b6338,
+        2
+      );
+
+
+    scene.add(
+      ambientLight
+    );
+
+
+    const sun =
+      new THREE.DirectionalLight(
+        0xffffff,
+        2.5
+      );
+
+
+    sun.position.set(
+      150,
+      250,
+      100
+    );
+
+
+    sun.castShadow =
+      true;
+
+
+    sun.shadow.mapSize.width =
+      2048;
+
+    sun.shadow.mapSize.height =
+      2048;
+
+
+    sun.shadow.camera.left =
+      -300;
+
+    sun.shadow.camera.right =
+      300;
+
+    sun.shadow.camera.top =
+      300;
+
+    sun.shadow.camera.bottom =
+      -300;
+
+
+    scene.add(
+      sun
+    );
+
+
+    // ============================================================
+    // FINARE GRÄS
+    // ============================================================
+
+    /*
+      Vi skapar en liten gräs-textur direkt i JavaScript.
+      Därför behöver du inte ladda upp någon bild.
+    */
+
+    const grassCanvas =
+      document.createElement(
+        "canvas"
+      );
+
+
+    grassCanvas.width =
+      256;
+
+    grassCanvas.height =
+      256;
+
+
+    const grassContext =
+      grassCanvas.getContext(
+        "2d"
+      );
+
+
+    // Basfärg
+
+    grassContext.fillStyle =
+      "#4f9f3f";
+
+
+    grassContext.fillRect(
+      0,
+      0,
+      256,
+      256
+    );
+
+
+    // Små grässtrån
+
+    for (
+      let i = 0;
+      i < 1800;
+      i++
+    ) {
+
+      const x =
+        Math.random() * 256;
+
+      const y =
+        Math.random() * 256;
+
+
+      const length =
+        2 +
+        Math.random() * 8;
+
+
+      const green =
+        80 +
+        Math.floor(
+          Math.random() * 70
+        );
+
+
+      grassContext.strokeStyle =
+        `rgb(
+          ${30 + Math.floor(Math.random() * 30)},
+          ${green},
+          ${30 + Math.floor(Math.random() * 30)}
+        )`;
+
+
+      grassContext.lineWidth =
+        0.7;
+
+
+      grassContext.beginPath();
+
+      grassContext.moveTo(
+        x,
+        y
+      );
+
+      grassContext.lineTo(
+        x +
+        (Math.random() - 0.5) * 3,
+
+        y -
+        length
+      );
+
+      grassContext.stroke();
+
+    }
+
+
+    const grassTexture =
+      new THREE.CanvasTexture(
+        grassCanvas
+      );
+
+
+    grassTexture.wrapS =
+      THREE.RepeatWrapping;
+
+
+    grassTexture.wrapT =
+      THREE.RepeatWrapping;
+
+
+    grassTexture.repeat.set(
+      250,
+      250
+    );
+
+
+    grassTexture.colorSpace =
+      THREE.SRGBColorSpace;
+
+
+    const grassMaterial =
+      new THREE.MeshStandardMaterial({
+        map: grassTexture,
+
+        roughness: 1
+      });
+
+
+    const grassGeometry =
+      new THREE.PlaneGeometry(
+        5000,
+        5000
+      );
+
+
+    const grass =
+      new THREE.Mesh(
+        grassGeometry,
+        grassMaterial
+      );
+
+
+    grass.rotation.x =
+      -Math.PI / 2;
+
+
+    grass.receiveShadow =
+      true;
+
+
+    scene.add(
+      grass
+    );
+
+
+    // ============================================================
+    // LITE GRÄSDETALJER
+    // ============================================================
+
+    /*
+      Små grässtrån nära spelaren.
+      Detta ger mer djup utan att skapa tusentals objekt.
+    */
+
+    const grassBladeMaterial =
+      new THREE.MeshBasicMaterial({
+        color: 0x3f8f35,
+        side: THREE.DoubleSide
+      });
+
+
+    const bladeGeometry =
+      new THREE.BufferGeometry();
+
+
+    const bladePositions = [];
+
+
+    for (
+      let i = 0;
+      i < 900;
+      i++
+    ) {
+
+      const x =
+        (Math.random() - 0.5) *
+        250;
+
+      const z =
+        (Math.random() - 0.5) *
+        250;
+
+
+      const height =
+        0.15 +
+        Math.random() * 0.35;
+
+
+      bladePositions.push(
+        x,
+        0,
+        z,
+
+        x,
+        height,
+        z
+      );
+
+    }
+
+
+    bladeGeometry.setAttribute(
+      "position",
+
+      new THREE.Float32BufferAttribute(
+        bladePositions,
+        3
+      )
+    );
+
+
+    const grassBlades =
+      new THREE.LineSegments(
+        bladeGeometry,
+        grassBladeMaterial
+      );
+
+
+    scene.add(
+      grassBlades
+    );
+
+
+    // ============================================================
+    // FIRST PERSON
+    // ============================================================
+
+    const controls =
+      new PointerLockControls(
+        camera,
+        document.body
+      );
+
+
     document
       .getElementById("start")
       .addEventListener(
         "click",
+
         () => {
 
           controls.lock();
@@ -269,11 +622,13 @@
 
     controls.addEventListener(
       "lock",
+
       () => {
 
         document
           .getElementById("start")
-          .style.display = "none";
+          .style.display =
+          "none";
 
       }
     );
@@ -281,11 +636,13 @@
 
     controls.addEventListener(
       "unlock",
+
       () => {
 
         document
           .getElementById("start")
-          .style.display = "block";
+          .style.display =
+          "block";
 
       }
     );
@@ -304,7 +661,7 @@
         new THREE.Group();
 
 
-      // kropp
+      // Kropp
 
       const bodyGeometry =
         new THREE.CapsuleGeometry(
@@ -314,10 +671,13 @@
           8
         );
 
+
       const bodyMaterial =
         new THREE.MeshStandardMaterial({
-          color: 0x3366ff
+          color: 0x3366ff,
+          roughness: 0.7
         });
+
 
       const body =
         new THREE.Mesh(
@@ -325,13 +685,21 @@
           bodyMaterial
         );
 
+
       body.position.y =
         0.9;
 
-      group.add(body);
+
+      body.castShadow =
+        true;
 
 
-      // huvud
+      group.add(
+        body
+      );
+
+
+      // Huvud
 
       const headGeometry =
         new THREE.SphereGeometry(
@@ -340,10 +708,13 @@
           16
         );
 
+
       const headMaterial =
         new THREE.MeshStandardMaterial({
-          color: 0xffcc99
+          color: 0xffcc99,
+          roughness: 0.8
         });
+
 
       const head =
         new THREE.Mesh(
@@ -351,31 +722,77 @@
           headMaterial
         );
 
+
       head.position.y =
         1.65;
 
-      group.add(head);
+
+      head.castShadow =
+        true;
 
 
-      scene.add(group);
+      group.add(
+        head
+      );
+
+
+      scene.add(
+        group
+      );
+
 
       return group;
+
     }
 
+
+    // ============================================================
+    // UPPDATERA ANNAN SPELARE
+    // ============================================================
 
     function updatePlayer(
       id,
       data
     ) {
 
-      if (id === playerId)
+      if (
+        id === playerId
+      )
         return;
 
 
-      if (!otherPlayers[id]) {
+      if (
+        !otherPlayers[id]
+      ) {
 
         otherPlayers[id] =
           createPlayer();
+
+
+        otherPlayers[id]
+          .position.set(
+            data.x,
+            0,
+            data.z
+          );
+
+
+        otherPlayers[id]
+          .userData.targetX =
+          data.x;
+
+
+        otherPlayers[id]
+          .userData.targetZ =
+          data.z;
+
+
+        otherPlayers[id]
+          .userData.targetRotation =
+          data.rotation || 0;
+
+
+        return;
 
       }
 
@@ -384,30 +801,40 @@
         otherPlayers[id];
 
 
-      player.position.x =
+      // Spara målet
+
+      player.userData.targetX =
         data.x;
 
-      player.position.y =
-        0;
 
-      player.position.z =
+      player.userData.targetZ =
         data.z;
 
-      player.rotation.y =
+
+      player.userData.targetRotation =
         data.rotation || 0;
 
     }
 
 
-    function removePlayer(id) {
+    // ============================================================
+    // TA BORT SPELARE
+    // ============================================================
 
-      if (!otherPlayers[id])
+    function removePlayer(
+      id
+    ) {
+
+      if (
+        !otherPlayers[id]
+      )
         return;
 
 
       scene.remove(
         otherPlayers[id]
       );
+
 
       delete otherPlayers[id];
 
@@ -421,6 +848,7 @@
     const channel =
       supabaseClient.channel(
         "game-world",
+
         {
           config: {
 
@@ -433,45 +861,53 @@
             }
 
           }
+
         }
       );
 
 
-    // När hela spelarlistan synkroniseras
+    // ============================================================
+    // PRESENCE SYNC
+    // ============================================================
 
     channel.on(
+
       "presence",
+
       {
         event: "sync"
       },
+
       () => {
 
         const state =
           channel.presenceState();
 
 
-        // Ta bort gamla spelare
-
         for (
           const id in otherPlayers
         ) {
 
-          if (!state[id]) {
+          if (
+            !state[id]
+          ) {
 
-            removePlayer(id);
+            removePlayer(
+              id
+            );
 
           }
 
         }
 
 
-        // Lägg till alla spelare
-
         for (
           const id in state
         ) {
 
-          if (id === playerId)
+          if (
+            id === playerId
+          )
             continue;
 
 
@@ -497,17 +933,26 @@
         updatePlayerCount();
 
       }
+
     );
 
 
-    // Ny spelare
+    // ============================================================
+    // NY SPELARE
+    // ============================================================
 
     channel.on(
+
       "presence",
+
       {
         event: "join"
       },
-      ({ key, newPresences }) => {
+
+      ({
+        key,
+        newPresences
+      }) => {
 
         if (
           key === playerId
@@ -527,37 +972,57 @@
 
         }
 
+
         updatePlayerCount();
 
       }
+
     );
 
 
-    // Spelare lämnar
+    // ============================================================
+    // SPELARE LÄMNAR
+    // ============================================================
 
     channel.on(
+
       "presence",
+
       {
         event: "leave"
       },
-      ({ key }) => {
 
-        removePlayer(key);
+      ({
+        key
+      }) => {
+
+        removePlayer(
+          key
+        );
+
 
         updatePlayerCount();
 
       }
+
     );
 
 
-    // Snabba positionsuppdateringar
+    // ============================================================
+    // POSITION BROADCAST
+    // ============================================================
 
     channel.on(
+
       "broadcast",
+
       {
         event: "move"
       },
-      ({ payload }) => {
+
+      ({
+        payload
+      }) => {
 
         if (
           payload.id === playerId
@@ -571,12 +1036,16 @@
         );
 
       }
+
     );
 
 
-    // Anslut
+    // ============================================================
+    // ANSLUT TILL WORLD
+    // ============================================================
 
     channel.subscribe(
+
       async (status) => {
 
         if (
@@ -591,17 +1060,21 @@
 
           await channel.track({
 
-            x: camera.position.x,
+            x:
+              camera.position.x,
 
-            z: camera.position.z,
+            z:
+              camera.position.z,
 
-            rotation: camera.rotation.y
+            rotation:
+              camera.rotation.y
 
           });
 
         }
 
       }
+
     );
 
 
@@ -614,8 +1087,10 @@
       const state =
         channel.presenceState();
 
-      let count =
+
+      const count =
         Object.keys(state).length;
+
 
       document
         .getElementById("players")
@@ -634,78 +1109,130 @@
       w: false,
       a: false,
       s: false,
-      d: false
+      d: false,
+
+      space: false
 
     };
 
 
     document.addEventListener(
+
       "keydown",
+
       (event) => {
 
         if (
           event.key === "w" ||
           event.key === "W"
-        )
+        ) {
+
           keys.w = true;
+
+        }
 
 
         if (
           event.key === "a" ||
           event.key === "A"
-        )
+        ) {
+
           keys.a = true;
+
+        }
 
 
         if (
           event.key === "s" ||
           event.key === "S"
-        )
+        ) {
+
           keys.s = true;
+
+        }
 
 
         if (
           event.key === "d" ||
           event.key === "D"
-        )
+        ) {
+
           keys.d = true;
 
+        }
+
+
+        if (
+          event.code === "Space"
+        ) {
+
+          event.preventDefault();
+
+          keys.space = true;
+
+        }
+
       }
+
     );
 
 
     document.addEventListener(
+
       "keyup",
+
       (event) => {
 
         if (
           event.key === "w" ||
           event.key === "W"
-        )
+        ) {
+
           keys.w = false;
+
+        }
 
 
         if (
           event.key === "a" ||
           event.key === "A"
-        )
+        ) {
+
           keys.a = false;
+
+        }
 
 
         if (
           event.key === "s" ||
           event.key === "S"
-        )
+        ) {
+
           keys.s = false;
+
+        }
 
 
         if (
           event.key === "d" ||
           event.key === "D"
-        )
+        ) {
+
           keys.d = false;
 
+        }
+
+
+        if (
+          event.code === "Space"
+        ) {
+
+          keys.space = false;
+
+        }
+
       }
+
     );
 
 
@@ -717,8 +1244,37 @@
       new THREE.Clock();
 
 
-    let sendTimer = 0;
+    const velocity =
+      new THREE.Vector3();
 
+
+    const direction =
+      new THREE.Vector3();
+
+
+    const moveSpeed =
+      8;
+
+
+    const gravity =
+      22;
+
+
+    const jumpStrength =
+      8;
+
+
+    let verticalVelocity =
+      0;
+
+
+    let onGround =
+      true;
+
+
+    // ============================================================
+    // MOVE PLAYER
+    // ============================================================
 
     function movePlayer(
       delta
@@ -730,45 +1286,118 @@
         return;
 
 
-      const speed =
-        8;
+      // ----------------------------------------------------------
+      // HOPPA
+      // ----------------------------------------------------------
+
+      if (
+        keys.space &&
+        onGround
+      ) {
+
+        verticalVelocity =
+          jumpStrength;
+
+        onGround =
+          false;
+
+      }
+
+
+      // ----------------------------------------------------------
+      // GRAVITATION
+      // ----------------------------------------------------------
+
+      verticalVelocity -=
+        gravity * delta;
+
+
+      camera.position.y +=
+        verticalVelocity * delta;
+
+
+      // Marknivå
+
+      if (
+        camera.position.y <= 1.7
+      ) {
+
+        camera.position.y =
+          1.7;
+
+        verticalVelocity =
+          0;
+
+        onGround =
+          true;
+
+      }
+
+
+      // ----------------------------------------------------------
+      // RÖRELSE
+      // ----------------------------------------------------------
+
+      direction.set(
+        0,
+        0,
+        0
+      );
 
 
       if (keys.w)
-        controls.moveForward(
-          speed * delta
-        );
+        direction.z -= 1;
 
 
       if (keys.s)
-        controls.moveForward(
-          -speed * delta
-        );
+        direction.z += 1;
 
 
       if (keys.a)
-        controls.moveRight(
-          -speed * delta
-        );
+        direction.x -= 1;
 
 
       if (keys.d)
+        direction.x += 1;
+
+
+      if (
+        direction.lengthSq() > 0
+      ) {
+
+        direction.normalize();
+
+
+        velocity.x =
+          direction.x *
+          moveSpeed;
+
+        velocity.z =
+          direction.z *
+          moveSpeed;
+
+
         controls.moveRight(
-          speed * delta
+          velocity.x * delta
         );
 
 
-      // Håll kameran på marknivå
+        controls.moveForward(
+          -velocity.z * delta
+        );
 
-      camera.position.y =
-        1.7;
+      }
 
     }
 
 
     // ============================================================
-    // SKICKA POSITION TILL ANDRA SPELARE
+    // SKICKA POSITION
     // ============================================================
+
+    let sendTimer =
+      0;
+
 
     async function sendPosition() {
 
@@ -780,17 +1409,22 @@
 
       await channel.send({
 
-        type: "broadcast",
+        type:
+          "broadcast",
 
-        event: "move",
+        event:
+          "move",
 
         payload: {
 
-          id: playerId,
+          id:
+            playerId,
 
-          x: camera.position.x,
+          x:
+            camera.position.x,
 
-          z: camera.position.z,
+          z:
+            camera.position.z,
 
           rotation:
             camera.rotation.y
@@ -798,6 +1432,100 @@
         }
 
       });
+
+    }
+
+
+    // ============================================================
+    // SMOOTH MULTIPLAYER
+    // ============================================================
+
+    function smoothOtherPlayers(
+      delta
+    ) {
+
+      for (
+        const id in otherPlayers
+      ) {
+
+        const player =
+          otherPlayers[id];
+
+
+        if (
+          player.userData.targetX ===
+          undefined
+        ) {
+
+          continue;
+
+        }
+
+
+        /*
+          Smooth interpolation.
+
+          Detta gör att andra spelare
+          inte hoppar mellan positioner.
+        */
+
+        const smooth =
+          1 -
+          Math.pow(
+            0.001,
+            delta
+          );
+
+
+        player.position.x +=
+
+          (
+            player.userData.targetX -
+            player.position.x
+          ) * smooth;
+
+
+        player.position.z +=
+
+          (
+            player.userData.targetZ -
+            player.position.z
+          ) * smooth;
+
+
+        // --------------------------------------------------------
+        // SMOOTH ROTATION
+        // --------------------------------------------------------
+
+        const targetRotation =
+          player.userData.targetRotation;
+
+
+        let rotationDifference =
+          targetRotation -
+          player.rotation.y;
+
+
+        rotationDifference =
+          Math.atan2(
+
+            Math.sin(
+              rotationDifference
+            ),
+
+            Math.cos(
+              rotationDifference
+            )
+
+          );
+
+
+        player.rotation.y +=
+
+          rotationDifference *
+          smooth;
+
+      }
 
     }
 
@@ -814,29 +1542,47 @@
 
 
       const delta =
-        clock.getDelta();
+        Math.min(
+          clock.getDelta(),
+          0.05
+        );
 
+
+      // Egen spelare
 
       movePlayer(
         delta
       );
 
 
-      sendTimer += delta;
+      // Andra spelare
+
+      smoothOtherPlayers(
+        delta
+      );
 
 
-      // ungefär 10 positionsuppdateringar/sekund
+      // Skicka position
+
+      sendTimer +=
+        delta;
+
 
       if (
-        sendTimer > 0.1
+        sendTimer >
+        0.08
       ) {
 
-        sendTimer = 0;
+        sendTimer =
+          0;
+
 
         sendPosition();
 
       }
 
+
+      // Render
 
       renderer.render(
         scene,
@@ -850,29 +1596,38 @@
 
 
     // ============================================================
-    // FÖNSTERSTORLEK
+    // WINDOW RESIZE
     // ============================================================
 
     window.addEventListener(
+
       "resize",
+
       () => {
 
         camera.aspect =
           window.innerWidth /
           window.innerHeight;
 
+
         camera.updateProjectionMatrix();
 
 
         renderer.setSize(
+
           window.innerWidth,
+
           window.innerHeight
+
         );
 
       }
+
     );
+
 
   </script>
 
 </body>
+
 </html>
