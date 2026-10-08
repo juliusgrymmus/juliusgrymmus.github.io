@@ -820,6 +820,19 @@ playerName=playerName.substring(0,16);
 }
 promptName();
 
+promptName();
+
+// Fallback om Supabase inte svarar inom 4 sekunder
+setTimeout(()=>{
+  if(document.getElementById("lobby-status").textContent==="Ansluter..."){
+    document.getElementById("lobby-status").textContent="Solo-läge (ingen serveranslutning)";
+    document.getElementById("ready-btn").disabled=false;
+    ST.isHost=true;
+  }
+},4000);
+
+
+  
 function createRemotePlayer(id,name){
 if(otherPlayers[id])return;
 const g=new THREE.Group();
