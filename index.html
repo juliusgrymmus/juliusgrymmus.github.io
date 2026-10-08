@@ -254,8 +254,9 @@ const moon=new THREE.DirectionalLight(0x8888cc,1.2);
 moon.position.set(50,120,30);moon.castShadow=true;moon.shadow.mapSize.set(2048,2048);
 const sc=moon.shadow.camera;sc.left=-150;sc.right=150;sc.top=150;sc.bottom=-150;sc.near=1;sc.far=400;
 scene.add(moon);
-scene.add(Object.assign(new THREE.PointLight(0xff6600,.6,60),{position:new THREE.Vector3(20,8,20)}));
-scene.add(Object.assign(new THREE.PointLight(0x0066ff,.5,60),{position:new THREE.Vector3(-25,8,-15)}));
+const light = new THREE.PointLight(0xff6600, .6, 60);
+light.position.set(20, 8, 20);
+scene.add(light);scene.add(Object.assign(new THREE.PointLight(0x0066ff,.5,60),{position:new THREE.Vector3(-25,8,-15)}));
 
 // ===== CITY =====
 const buildings=[];
