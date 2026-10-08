@@ -810,8 +810,10 @@ const SUPABASE_URL="https://vdlezuortcobvypkhfnn.supabase.co";
 const SUPABASE_KEY="sb_publishable_KGwlKLA38h3LVlZIWBfnsQ_496oon4z";
 
 let channel=null;
-const playerId=crypto.randomUUID();
-let playerName="";
+const playerId =
+  typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
+    ? crypto.randomUUID()
+    : Date.now().toString(36) + Math.random().toString(36).substring(2);let playerName="";
 const otherPlayers={};
 
 function promptName(){
