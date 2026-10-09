@@ -623,20 +623,34 @@ function switchWeapon(id){if(!ST.ownedWeapons[id])return;ST.curWeapon=id;ST.ammo
 
 /* ===== READY SYSTEM – BROADCAST-BASED ===== */
 const readyMap={lobby:{},shop:{}};
+let lobbyStartPending=false;
+let nextWaveStartPending=false;
 
 function broadcastReady(context,ready){
-  readyMap[context][playerId]=ready;
-  bcast("set-ready",{context,ready});
+  readyMap[context][playerId]=!!ready;
+  bcast("set-ready",{context,ready:!!ready});
   updatePresence();
+} 
+
+// Presence is the recovery source if a broadcast was missed or a player reconnects.
+function syncReadyFromPresence(pState){
+  for(const id in pState){
+    const entries=pState[id];
+    const p=Array.isArray(entries)?entries[entries.length-1]:null;
+    if(!p)continue;
+    readyMap.lobby[id]=!!p.lobbyReady;
+    readyMap.shop[id]=!!p.shopReady;
+  }
 }
 
 function updateShopReadyStatus(){
   if(!channel){document.getElementById("shop-ready-status").textContent="Solo-läge – klicka redo!";return;}
   const pState=channel.presenceState();
   let ready=0,total=0;
+  syncReadyFromPresence(pState);
   for(const id in pState){
-    const p=pState[id]?.[0];if(!p)continue;
-    if(p.phase==='shop'||p.phase==='playing'){total++;if(readyMap.shop[id])ready++;}
+    const entries=pState[id],p=Array.isArray(entries)?entries[entries.length-1]:null;if(!p)continue;
+    if(p.phase==='shop'){total++;if(p.shopReady===true)ready++;}
   }
   document.getElementById("shop-ready-status").textContent=`${ready}/${total} spelare redo`;
 }
@@ -651,18 +665,25 @@ document.getElementById("start-wave-btn").addEventListener("click",()=>{
 });
 
 function tryStartNextWave(){
-  if(!ST.isHost)return;
-  if(!channel){if(ST.shopReady){ST.wave++;startWave();}return;}
+  if(!ST.isHost||nextWaveStartPending||ST.phase!=='shop')return;
+  if(!channel){if(ST.shopReady){nextWaveStartPending=true;ST.wave++;startWave();nextWaveStartPending=false;}return;}
   const pState=channel.presenceState();
+  syncReadyFromPresence(pState);
   let allReady=true,count=0;
   for(const id in pState){
-    const p=pState[id]?.[0];if(!p)continue;
-    if(p.phase==='shop'){count++;if(!readyMap.shop[id])allReady=false;}
+    const entries=pState[id],p=Array.isArray(entries)?entries[entries.length-1]:null;if(!p)continue;
+    if(p.phase==='shop'){
+      count++;
+      if(p.shopReady!==true)allReady=false;
+    }
   }
   if(allReady&&count>0){
-    ST.wave++;
-    bcast("next-wave",{wave:ST.wave});
+    nextWaveStartPending=true;
+    const nextWave=ST.wave+1;
+    ST.wave=nextWave;
+    bcast("next-wave",{wave:nextWave});
     startWave();
+    nextWaveStartPending=false;
   }
 }
 
@@ -676,10 +697,11 @@ function buildLobbyUI(){
     return;
   }
   const pState=channel.presenceState();
+  syncReadyFromPresence(pState);
   const list=document.getElementById("player-list");list.innerHTML="";
   let gameActive=false,lobbyCount=0,lobbyReady=0;
   for(const id in pState){
-    const p=pState[id]?.[0];if(!p)continue;
+    const entries=pState[id],p=Array.isArray(entries)?entries[entries.length-1]:null;if(!p)continue;
     if(p.phase==='playing'||p.phase==='shop')gameActive=true;
     if(p.phase==='lobby')lobbyCount++;
     const row=document.createElement("div");
@@ -687,7 +709,7 @@ function buildLobbyUI(){
     let sc="waiting",st="Väntar";
     if(p.phase==='playing'){sc="ingame";st="I spel 🎮";}
     else if(p.phase==='dead'){sc="dead";st="Död 💀";}
-    else if(readyMap.lobby[id]){sc="ready";st="Redo! ✅";if(p.phase==='lobby')lobbyReady++;}
+    else if(p.lobbyReady===true){sc="ready";st="Redo! ✅";if(p.phase==='lobby')lobbyReady++;}
     row.innerHTML=`<span class="pname">${p.name||"Spelare"}${id===playerId?" (du)":""}</span><span class="pstatus ${sc}">${st}</span>`;
     list.appendChild(row);
   }
@@ -712,17 +734,24 @@ document.getElementById("ready-btn").addEventListener("click",()=>{
 });
 
 function tryStartLobby(){
-  if(!ST.isHost)return;
-  if(!channel){if(ST.lobbyReady){doGameStart();}return;}
-  setTimeout(()=>{
-    const pState=channel.presenceState();
-    let allReady=true,count=0;
-    for(const id in pState){
-      const p=pState[id]?.[0];if(!p)continue;
-      if(p.phase==='lobby'){count++;if(!readyMap.lobby[id])allReady=false;}
+  if(!ST.isHost||lobbyStartPending||ST.phase!=='lobby')return;
+  if(!channel){if(ST.lobbyReady){lobbyStartPending=true;doGameStart();lobbyStartPending=false;}return;}
+  const pState=channel.presenceState();
+  syncReadyFromPresence(pState);
+  let allReady=true,count=0;
+  for(const id in pState){
+    const entries=pState[id],p=Array.isArray(entries)?entries[entries.length-1]:null;if(!p)continue;
+    if(p.phase==='lobby'){
+      count++;
+      if(p.lobbyReady!==true)allReady=false;
     }
-    if(allReady&&count>0){bcast("game-start",{});doGameStart();}
-  },200);
+  }
+  if(allReady&&count>0){
+    lobbyStartPending=true;
+    bcast("game-start",{});
+    doGameStart();
+    lobbyStartPending=false;
+  }
 }
 
 function doGameStart(){
@@ -818,9 +847,10 @@ function initMultiplayer(){
     channel.on("presence",{event:"sync"},()=>{
       determineHost();
       const pState=channel.presenceState();
+      syncReadyFromPresence(pState);
       for(const id in pState){
         if(id===playerId)continue;
-        const p=pState[id]?.[0];if(!p)continue;
+        const entries=pState[id],p=Array.isArray(entries)?entries[entries.length-1]:null;if(!p)continue;
         if(!otherPlayers[id])createRemotePlayer(id,p.name);
         if(confirmedDeadPlayers.has(id)){otherPlayers[id].userData.alive=false;otherPlayers[id].visible=false;}
         else{const isAlive=p.alive!==false&&p.phase==='playing';otherPlayers[id].userData.alive=isAlive;otherPlayers[id].visible=isAlive;}
